@@ -752,8 +752,14 @@ const CF = [["first","Prénom"],["last","Nom"],["birth","Date de naissance"],["t
 let editingId = null, detailId = null;
 const initials = c => ((c.first||"?")[0] + (c.last||"")[0]).toUpperCase();
 function clientStats(id){
-  const ts = load(K.tickets, []).filter(t => t.clientId === id);
-  return {n: ts.length, total: ts.reduce((a,t) => a + t.total, 0), list: ts};
+  const client = load(K.clients, []).find(c => c.id === id);
+  const wantedName = client ? searchNorm(`${client.first || ""} ${client.last || ""}`) : "";
+  const ts = load(K.tickets, []).filter(t => {
+    if (t.clientId) return t.clientId === id;
+    // Compatibilité avec les anciens tickets enregistrés uniquement avec le nom du client.
+    return !!wantedName && searchNorm(t.client || `${t.first || ""} ${t.last || ""}`) === wantedName;
+  });
+  return {n: ts.length, total: ts.reduce((a,t) => a + (Number(t.total) || 0), 0), list: ts};
 }
 function renderClients(){
   const q = ($("cSearch").value || "").toLowerCase(), sort = $("cSort").value;
@@ -1230,26 +1236,41 @@ function drawTicket(cv, d){
   x.fillText("À bientôt chez " + SITE_NAME, W/2, y); y += 28;
   x.fillText(SITE_URL, W/2, y);
 }
+// Utilitaires de recherche définis explicitement pour éviter une erreur JavaScript
+// qui interrompait la recherche dès qu'un ticket devait être comparé ou affiché.
+function searchNorm(value){
+  return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR").replace(/\s+/g, " ").trim();
+}
+const digits = value => String(value ?? "").replace(/\D/g, "");
+const alnum = value => searchNorm(value).replace(/[^a-z0-9]/g, "");
+const tnum = t => tdisp(t && t.number != null ? t.number : "");
 function ticketClient(t){
-  const c = t.clientId ? load(K.clients, []).find(x => x.id === t.clientId) : null;
+  const c = t && t.clientId ? load(K.clients, []).find(x => x.id === t.clientId) : null;
   if(c) return {first:c.first||"", last:c.last||"", mail:c.mail||"", tel:c.tel||""};
-  const parts = (t.client || "").split(" ");
-  return {first:t.first || parts[0] || "", last:t.last || parts.slice(1).join(" "), mail:t.mail||"", tel:t.tel||""};
+  const parts = String((t && t.client) || "").trim().split(/\s+/).filter(Boolean);
+  return {first:(t && t.first)||parts[0]||"", last:(t && t.last)||parts.slice(1).join(" "), mail:(t && t.mail)||"", tel:(t && t.tel)||""};
 }
 function matchTicket(t, q, field){
-  const c = ticketClient(t), ql = q.toLowerCase();
-  const has = v => String(v).toLowerCase().includes(ql);
-  const numHit = () => alnum(q).length > 0 && alnum(tdisp(t.number)).includes(alnum(q));
+  const c = ticketClient(t), needle = searchNorm(q), ql = needle;
+  if(!needle) return true;
+  const has = v => searchNorm(v).includes(ql);
+  const number = alnum(t && t.number);
+  const numHit = () => alnum(q).length > 0 && number.includes(alnum(q));
   const telHit = () => digits(q) ? digits(c.tel).includes(digits(q)) : has(c.tel);
+  const fullName = searchNorm(`${c.first} ${c.last}`);
+  const reverseName = searchNorm(`${c.last} ${c.first}`);
   switch(field){
     case "first": return has(c.first);
     case "last": return has(c.last);
     case "mail": return has(c.mail);
     case "tel": return telHit();
     case "number": return numHit();
-    default:
-      return [c.first, c.last, c.mail, t.pay, t.note, t.items.map(i => i.name + " " + (i.color || "")).join(" ")].some(has)
+    default:{
+      const itemText = (Array.isArray(t && t.items) ? t.items : []).map(i => `${i && i.name || ""} ${i && i.color || ""}`).join(" ");
+      return [c.first, c.last, c.mail, t && t.client, t && t.pay, t && t.note, itemText].some(has)
+        || fullName.includes(needle) || reverseName.includes(needle)
         || (alnum(q).length >= 2 && numHit()) || (digits(q).length >= 3 && telHit());
+    }
   }
 }
 function ticketRow(t){
