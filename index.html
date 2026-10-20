@@ -1170,15 +1170,20 @@ function downloadCanvas(cv, name){
 
 /* ============ Ticket : dessin de l'image ============ */
 function drawTicket(cv, d){
-  const W = 380, S = 3, rowH = 46;           // largeur plus étroite = écritures plus grosses
+  const W = 380, S = 3, rowH = 46;           // largeur conservée, texte lisible
   const hasLogo = logoImg.complete && logoImg.naturalWidth > 0, logoH = hasLogo ? 110 : 0;
   const colorCount = d.items.filter(i => i.color).length;
-  let H = 60 + (hasLogo ? logoH + 30 : 0) + 110            // en-tête
-        + 70 + (d.client ? 34 : 0)                          // date / numéro / client
-        + 50 + Math.max(d.items.length,1)*rowH + colorCount*26
-        + (d.discount > 0 ? 80 : 0) + 80                    // remise + total
-        + (d.pay ? 34 : 0) + (d.note ? 34 : 0) + 150;       // paiement, note, pied de ticket
-  H = Math.max(H, Math.round(W * 2.6));                     // ticket plus long (~15 cm à 58 mm de large)
+  const logoRatio = hasLogo ? logoImg.naturalWidth / logoImg.naturalHeight : 1;
+  const logoDrawH = hasLogo ? Math.min(logoH * logoRatio, 220) / logoRatio : 0;
+  // Hauteur utile estimée d'après le contenu réellement dessiné, avec une cible de 15 cm.
+  // Les espaces supplémentaires sont répartis entre les sections pour éviter un grand blanc en bas.
+  const contentH = 44 + (hasLogo ? logoDrawH + 40 : 0) + 30 + 34 + 30 + 30 + 32
+        + (d.client ? 32 : 0) + 30 + 32
+        + (d.items.length ? d.items.length * rowH + colorCount * 26 : rowH)
+        + 30 + (d.discount > 0 ? 72 : 0) + 60 + (d.pay ? 32 : 0)
+        + (d.note ? 32 : 0) + 14 + 32 + 28 + 35;
+  const H = Math.max(Math.round(W * 150 / 58), Math.ceil(contentH));
+  const extraGap = Math.max(0, (H - contentH) / 4);
   cv.width = W*S; cv.height = H*S;
   const x = cv.getContext("2d"); x.scale(S,S);
   x.fillStyle = "#fff"; x.fillRect(0,0,W,H);
@@ -1190,13 +1195,14 @@ function drawTicket(cv, d){
   }
   x.font = "800 34px Inter, Arial, sans-serif"; x.fillText(SITE_NAME, W/2, y); y += 30;
   x.font = "600 17px Inter, Arial, sans-serif"; x.fillStyle = "#333";
-  x.fillText(SITE_URL, W/2, y); y += 34;
+  x.fillText("Merci beaucoup pour votre commande", W/2, y); y += 34 + extraGap;
   const line = () => { x.strokeStyle="#000"; x.lineWidth=1.5; x.setLineDash([7,5]); x.beginPath(); x.moveTo(16,y); x.lineTo(W-16,y); x.stroke(); x.setLineDash([]); y += 30; };
   line();
   x.textAlign = "left"; x.fillStyle = "#000"; x.font = "600 19px Inter, Arial, sans-serif";
   x.fillText("Date : " + fdate(d.date), 16, y); y += 30;
   x.fillText("Ticket n° " + tdisp(d.number), 16, y); y += 32;
   if(d.client){ x.font="700 19px Inter, Arial, sans-serif"; x.fillText("Client : " + d.client, 16, y); y += 32; }
+  y += extraGap;
   line();
   x.font = "700 16px Inter, Arial, sans-serif"; x.fillStyle="#333";
   x.textAlign="left"; x.fillText("OBJET", 16, y); x.textAlign="right"; x.fillText("PRIX", W-16, y); y += 32;
@@ -1216,6 +1222,7 @@ function drawTicket(cv, d){
     }
     y += rowH;
   });
+  y += extraGap;
   line();
   if(d.discount > 0){
     const sub = d.items.reduce((a,it) => a + num(it.price), 0);
@@ -1229,7 +1236,7 @@ function drawTicket(cv, d){
   x.textAlign="center"; x.font = "600 18px Inter, Arial, sans-serif"; x.fillStyle="#000";
   if(d.pay){ x.fillText("Paiement : " + d.pay, W/2, y); y += 32; }
   if(d.note){ x.fillText(d.note.length > 40 ? d.note.slice(0,39) + "…" : d.note, W/2, y); y += 32; }
-  y += 14;
+  y += 14 + extraGap;
   x.font = "800 22px Inter, Arial, sans-serif";
   x.fillText("Merci pour votre confiance !", W/2, y); y += 32;
   x.font = "600 18px Inter, Arial, sans-serif"; x.fillStyle="#222";
