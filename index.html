@@ -353,11 +353,6 @@
             <label for="impFile">Restaurer une sauvegarde</label>
             <input type="file" id="impFile" accept="application/json,.json" onchange="importData(this)">
           </div>
-          <div class="card">
-            <h3>Zone sensible</h3>
-            <p class="sub">Efface tous les clients, tickets et avis de ce navigateur.</p>
-            <div class="actions"><button class="danger" onclick="wipeAll()">🗑 Tout effacer</button></div>
-          </div>
         </div>
       </div>
     </div>
@@ -1171,7 +1166,7 @@ function downloadCanvas(cv, name){
 function drawTicket(cv, d){
   const W = 560, S = 2, rowH = 34;
   const hasLogo = logoImg.complete && logoImg.naturalWidth > 0, logoH = hasLogo ? 150 : 0;
-  const H = 420 + (hasLogo ? logoH + 26 : 0) + Math.max(d.items.length,1)*rowH
+  const H = 420 + (hasLogo ? logoH + 26 : 0) + Math.max(d.items.length,1)*rowH + d.items.filter(i => i.color).length*20
           + (d.discount > 0 ? 60 : 0) + (d.pay ? 26 : 0) + (d.note ? 26 : 0) + (d.client ? 26 : 0);
   cv.width = W*S; cv.height = H*S;
   const x = cv.getContext("2d"); x.scale(S,S);
@@ -1198,11 +1193,17 @@ function drawTicket(cv, d){
   if(!d.items.length){ x.textAlign="left"; x.fillStyle="#aaa"; x.fillText("—", 30, y); y += rowH; }
   d.items.forEach(it => {
     x.textAlign="left"; x.fillStyle="#111";
-    const base = (it.name.trim() || "Objet") + (it.color ? " (" + it.color + ")" : ""); let name = base;
+    const base = it.name.trim() || "Objet"; let name = base;
     while(x.measureText(name).width > W-190 && name.length>1) name = name.slice(0,-1);
     if(name !== base) name += "…";
     x.fillText(name, 30, y);
-    x.textAlign="right"; x.fillText(money(num(it.price)), W-30, y); y += rowH;
+    x.textAlign="right"; x.fillText(money(num(it.price)), W-30, y);
+    if(it.color){
+      x.textAlign="left"; x.font = "500 13px Inter, Arial, sans-serif"; x.fillStyle = "#666";
+      x.fillText("Couleur : " + it.color, 30, y + 19);
+      x.font = "500 16px Inter, Arial, sans-serif"; x.fillStyle = "#111"; y += 20;
+    }
+    y += rowH;
   });
   line();
   if(d.discount > 0){
@@ -1332,12 +1333,6 @@ function importData(inp){
     inp.value = "";
   };
   r.readAsText(f);
-}
-function wipeAll(){
-  sure("Effacer tous les clients, tickets et avis ? Cette action est définitive.", () => askCode(() => loadFor(1500, 2500, () => {
-    [K.clients, K.reviews, K.tickets, K.tn, K.messages].forEach(k => localStorage.removeItem(k));
-    toast("Données effacées");
-  }, "Suppression…"), "Code pour tout effacer"));
 }
 
 /* ============ Démarrage ============ */
