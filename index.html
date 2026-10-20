@@ -1097,7 +1097,7 @@ function ticketCanvas(d){ const cv = document.createElement("canvas"); drawTicke
 const canvasBlob = (cv, type, q) => new Promise(r => cv.toBlob(r, type, q));
 /* PDF : une page contenant l'image du ticket (aucune bibliothèque nécessaire) */
 function buildPdf(jpeg, iw, ih){
-  const pw = 300, ph = Math.round(pw * ih / iw * 10) / 10, enc = new TextEncoder(), parts = [], offs = [];
+  const pw = 164, ph = Math.round(pw * ih / iw * 10) / 10, enc = new TextEncoder(), parts = [], offs = [];
   let len = 0;
   const push = b => { if(typeof b === "string") b = enc.encode(b); parts.push(b); len += b.length; };
   push("%PDF-1.4\n");
@@ -1164,74 +1164,72 @@ function downloadCanvas(cv, name){
 
 /* ============ Ticket : dessin de l'image ============ */
 function drawTicket(cv, d){
-  const W = 560, S = 2, rowH = 34;
-  const hasLogo = logoImg.complete && logoImg.naturalWidth > 0, logoH = hasLogo ? 150 : 0;
-  const H = 420 + (hasLogo ? logoH + 26 : 0) + Math.max(d.items.length,1)*rowH + d.items.filter(i => i.color).length*20
-          + (d.discount > 0 ? 60 : 0) + (d.pay ? 26 : 0) + (d.note ? 26 : 0) + (d.client ? 26 : 0);
+  const W = 380, S = 3, rowH = 46;           // largeur plus étroite = écritures plus grosses
+  const hasLogo = logoImg.complete && logoImg.naturalWidth > 0, logoH = hasLogo ? 110 : 0;
+  const colorCount = d.items.filter(i => i.color).length;
+  let H = 60 + (hasLogo ? logoH + 30 : 0) + 110            // en-tête
+        + 70 + (d.client ? 34 : 0)                          // date / numéro / client
+        + 50 + Math.max(d.items.length,1)*rowH + colorCount*26
+        + (d.discount > 0 ? 80 : 0) + 80                    // remise + total
+        + (d.pay ? 34 : 0) + (d.note ? 34 : 0) + 150;       // paiement, note, pied de ticket
+  H = Math.max(H, Math.round(W * 2.6));                     // ticket plus long (~15 cm à 58 mm de large)
   cv.width = W*S; cv.height = H*S;
   const x = cv.getContext("2d"); x.scale(S,S);
   x.fillStyle = "#fff"; x.fillRect(0,0,W,H);
-  x.fillStyle = "#111"; x.textAlign = "center";
-  let y = 40;
+  x.fillStyle = "#000"; x.textAlign = "center";
+  let y = 44;
   if(hasLogo){
-    const r = logoImg.naturalWidth/logoImg.naturalHeight, w = Math.min(logoH*r, 260), h = w/r;
-    x.drawImage(logoImg, (W-w)/2, y, w, h); y += h + 34;
+    const r = logoImg.naturalWidth/logoImg.naturalHeight, w = Math.min(logoH*r, 220), h = w/r;
+    x.drawImage(logoImg, (W-w)/2, y, w, h); y += h + 40;
   }
-  x.font = "800 30px Inter, Arial, sans-serif"; x.fillText(SITE_NAME, W/2, y); y += 24;
-  x.font = "500 14px Inter, Arial, sans-serif"; x.fillStyle = "#666";
-  x.fillText(SITE_URL, W/2, y); y += 30;
-  const line = () => { x.strokeStyle="#bbb"; x.setLineDash([6,5]); x.beginPath(); x.moveTo(30,y); x.lineTo(W-30,y); x.stroke(); x.setLineDash([]); y += 24; };
+  x.font = "800 34px Inter, Arial, sans-serif"; x.fillText(SITE_NAME, W/2, y); y += 30;
+  x.font = "600 17px Inter, Arial, sans-serif"; x.fillStyle = "#333";
+  x.fillText(SITE_URL, W/2, y); y += 34;
+  const line = () => { x.strokeStyle="#000"; x.lineWidth=1.5; x.setLineDash([7,5]); x.beginPath(); x.moveTo(16,y); x.lineTo(W-16,y); x.stroke(); x.setLineDash([]); y += 30; };
   line();
-  x.textAlign = "left"; x.fillStyle = "#222"; x.font = "500 15px Inter, Arial, sans-serif";
-  x.fillText("Date : " + fdate(d.date), 30, y);
-  x.textAlign = "right"; x.fillText("Ticket n° " + tdisp(d.number), W-30, y); y += 26;
-  if(d.client){ x.textAlign="left"; x.font="600 15px Inter, Arial, sans-serif"; x.fillText("Client : " + d.client, 30, y); y += 26; }
+  x.textAlign = "left"; x.fillStyle = "#000"; x.font = "600 19px Inter, Arial, sans-serif";
+  x.fillText("Date : " + fdate(d.date), 16, y); y += 30;
+  x.fillText("Ticket n° " + tdisp(d.number), 16, y); y += 32;
+  if(d.client){ x.font="700 19px Inter, Arial, sans-serif"; x.fillText("Client : " + d.client, 16, y); y += 32; }
   line();
-  x.font = "600 13px Inter, Arial, sans-serif"; x.fillStyle="#888";
-  x.textAlign="left"; x.fillText("OBJET", 30, y); x.textAlign="right"; x.fillText("PRIX", W-30, y); y += 26;
-  x.fillStyle="#111"; x.font = "500 16px Inter, Arial, sans-serif";
-  if(!d.items.length){ x.textAlign="left"; x.fillStyle="#aaa"; x.fillText("—", 30, y); y += rowH; }
+  x.font = "700 16px Inter, Arial, sans-serif"; x.fillStyle="#333";
+  x.textAlign="left"; x.fillText("OBJET", 16, y); x.textAlign="right"; x.fillText("PRIX", W-16, y); y += 32;
+  x.fillStyle="#000"; x.font = "600 21px Inter, Arial, sans-serif";
+  if(!d.items.length){ x.textAlign="left"; x.fillStyle="#999"; x.fillText("—", 16, y); y += rowH; }
   d.items.forEach(it => {
-    x.textAlign="left"; x.fillStyle="#111";
+    x.textAlign="left"; x.fillStyle="#000"; x.font = "600 21px Inter, Arial, sans-serif";
     const base = it.name.trim() || "Objet"; let name = base;
-    while(x.measureText(name).width > W-190 && name.length>1) name = name.slice(0,-1);
+    while(x.measureText(name).width > W-140 && name.length>1) name = name.slice(0,-1);
     if(name !== base) name += "…";
-    x.fillText(name, 30, y);
-    x.textAlign="right"; x.fillText(money(num(it.price)), W-30, y);
+    x.fillText(name, 16, y);
+    x.textAlign="right"; x.fillText(money(num(it.price)), W-16, y);
     if(it.color){
-      x.textAlign="left"; x.font = "500 13px Inter, Arial, sans-serif"; x.fillStyle = "#666";
-      x.fillText("Couleur : " + it.color, 30, y + 19);
-      x.font = "500 16px Inter, Arial, sans-serif"; x.fillStyle = "#111"; y += 20;
+      x.textAlign="left"; x.font = "500 16px Inter, Arial, sans-serif"; x.fillStyle = "#333";
+      x.fillText("Couleur : " + it.color, 16, y + 24);
+      y += 26;
     }
     y += rowH;
   });
   line();
   if(d.discount > 0){
     const sub = d.items.reduce((a,it) => a + num(it.price), 0);
-    x.font = "500 15px Inter, Arial, sans-serif"; x.fillStyle = "#444";
-    x.textAlign="left"; x.fillText("Sous-total", 30, y); x.textAlign="right"; x.fillText(money(sub), W-30, y); y += 28;
-    x.textAlign="left"; x.fillText("Remise", 30, y); x.textAlign="right"; x.fillText("- " + money(d.discount), W-30, y); y += 32;
+    x.font = "600 19px Inter, Arial, sans-serif"; x.fillStyle = "#000";
+    x.textAlign="left"; x.fillText("Sous-total", 16, y); x.textAlign="right"; x.fillText(money(sub), W-16, y); y += 32;
+    x.textAlign="left"; x.fillText("Remise", 16, y); x.textAlign="right"; x.fillText("- " + money(d.discount), W-16, y); y += 40;
   }
-  x.font = "800 22px Inter, Arial, sans-serif"; x.fillStyle="#111";
-  x.textAlign="left"; x.fillText("TOTAL", 30, y+6);
-  x.textAlign="right"; x.fillText(money(d.total), W-30, y+6); y += 46;
-  x.textAlign="center"; x.font = "500 14px Inter, Arial, sans-serif"; x.fillStyle="#555";
-  if(d.pay){ x.fillText("Paiement : " + d.pay, W/2, y); y += 26; }
-  if(d.note){ x.fillText(d.note.length > 64 ? d.note.slice(0,63) + "…" : d.note, W/2, y); y += 26; }
-  y += 6;
-  x.fillStyle="#111"; x.font = "700 18px Inter, Arial, sans-serif";
-  x.fillText("Merci pour votre confiance !", W/2, y); y += 26;
-  x.font = "500 14px Inter, Arial, sans-serif"; x.fillStyle="#666";
-  x.fillText("À bientôt chez " + SITE_NAME, W/2, y); y += 22;
+  x.font = "800 30px Inter, Arial, sans-serif"; x.fillStyle="#000";
+  x.textAlign="left"; x.fillText("TOTAL", 16, y+8);
+  x.textAlign="right"; x.fillText(money(d.total), W-16, y+8); y += 60;
+  x.textAlign="center"; x.font = "600 18px Inter, Arial, sans-serif"; x.fillStyle="#000";
+  if(d.pay){ x.fillText("Paiement : " + d.pay, W/2, y); y += 32; }
+  if(d.note){ x.fillText(d.note.length > 40 ? d.note.slice(0,39) + "…" : d.note, W/2, y); y += 32; }
+  y += 14;
+  x.font = "800 22px Inter, Arial, sans-serif";
+  x.fillText("Merci pour votre confiance !", W/2, y); y += 32;
+  x.font = "600 18px Inter, Arial, sans-serif"; x.fillStyle="#222";
+  x.fillText("À bientôt chez " + SITE_NAME, W/2, y); y += 28;
   x.fillText(SITE_URL, W/2, y);
 }
-
-/* ============ Recherche de tickets ============ */
-let hist = {q:"", field:"all", open:null};
-const tnum = t => "n° " + tdisp(t.number);
-const alnum = v => String(v).replace(/[^a-z0-9]/gi, "").toUpperCase();
-const digits = v => String(v).replace(/\D/g, "");
-/* Infos du client d'un ticket : fiche actuelle si elle existe, sinon copie enregistrée sur le ticket */
 function ticketClient(t){
   const c = t.clientId ? load(K.clients, []).find(x => x.id === t.clientId) : null;
   if(c) return {first:c.first||"", last:c.last||"", mail:c.mail||"", tel:c.tel||""};
