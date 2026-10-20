@@ -8,51 +8,54 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#dde3ea; --card:#ffffff; --border:#b4c0cc; --text:#1c2733; --muted:#566676;
-    --accent:#2f6db5; --accent-dark:#1f5290; --accent-soft:#e3edf8; --bar:#1d3557; --orange:#f28c28;
-    --danger:#c62828; --ok:#2e7d32; --soft:#f2f5f9; --gold:#e8a200;
+    --bg:#eef0f7; --card:#ffffff; --border:#d8dcea; --text:#141a2e; --muted:#5d6883;
+    --accent:#4f46e5; --accent-dark:#3b33c7; --accent-soft:#ecebfd; --bar:#0f1226; --mint:#2dd4bf;
+    --danger:#dc2626; --ok:#15803d; --soft:#f6f7fc; --gold:#f59e0b; --r:4px;
+    --sh:0 1px 2px rgba(15,18,38,.06),0 6px 18px rgba(15,18,38,.06);
   }
-  *{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+  *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
-  header.top{position:sticky;top:0;z-index:40;background:var(--bar);border-bottom:4px solid var(--orange);padding:0 14px;min-height:54px;display:flex;align-items:center;gap:12px}
+  header.top{position:sticky;top:0;z-index:40;background:var(--bar);border-bottom:3px solid var(--mint);padding:0 14px;min-height:56px;display:flex;align-items:center;gap:12px}
   .brand{color:#fff;font-weight:800;font-size:18px;white-space:nowrap}
-  .brand i{font-style:normal;color:var(--orange)}
+  .brand i{font-style:normal;color:var(--mint)}
   #topNav{display:flex;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none;min-width:0;align-self:stretch}
   #topNav::-webkit-scrollbar{display:none}
-  #topNav button{background:transparent;border:0;border-right:1px solid #2c4468;color:#c5d3e4;padding:0 16px;font-size:14px;font-weight:600;white-space:nowrap}
-  #topNav button:hover{color:#fff;background:#2a4670}
+  #topNav button{background:transparent;border:0;border-radius:0;color:#aeb6d6;padding:0 16px;font-size:14px;font-weight:600;white-space:nowrap}
+  #topNav button:hover{color:#fff;background:#1c2145}
   #topNav button.active{color:#fff;background:var(--accent)}
   #topNav .lk{font-size:11px;opacity:.75}
-  #topNav .bdg{background:var(--orange);color:#fff;padding:0 7px;font-size:11px;font-weight:800;margin-left:5px}
+  #topNav .bdg{background:var(--mint);color:#04211d;padding:0 7px;font-size:11px;font-weight:800;margin-left:5px;border-radius:var(--r)}
   #topActions{display:flex;align-items:center;gap:8px;margin-left:auto;flex:none}
-  .clientbtn{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;background:#2a4670;border:1px solid #4b6a96;color:#fff;font-size:13px;font-weight:600}
+  .clientbtn{display:flex;align-items:center;gap:8px;height:36px;padding:0 12px;background:#1c2145;border:1px solid #343b6e;color:#fff;font-size:13px;font-weight:600}
   .clientbtn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
   .clientbtn svg{width:20px;height:20px}
-  .logoutbtn{background:transparent;color:#fff;border:1px solid #4b6a96;padding:7px 14px;font-size:13px}
+  .logoutbtn{background:transparent;color:#fff;border:1px solid #343b6e;padding:7px 14px;font-size:13px}
   .logoutbtn:hover{background:var(--danger);border-color:var(--danger);color:#fff}
-  @media(max-width:700px){.clientbtn span{display:none}.brand{display:none}}
+  #clock{flex:none;color:#fff;font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;letter-spacing:.04em;padding:6px 12px;border:1px solid #343b6e;background:#1c2145;border-radius:var(--r)}
+  @media(max-width:700px){.clientbtn span{display:none}.brand{display:none}#clock{padding:6px 8px;font-size:14px}}
   .wrap{max-width:1040px;margin:0 auto;padding:26px 16px 60px}
-  .card{background:var(--card);border:1px solid var(--border);border-top:4px solid var(--accent);padding:22px}
-  .hero{background:var(--card);border:1px solid var(--border);border-top:4px solid var(--accent);text-align:center;padding:40px 20px 40px;margin-top:10px}
+  .card{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--accent);border-radius:var(--r);padding:22px;box-shadow:var(--sh)}
+  .hero{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--accent);border-radius:var(--r);box-shadow:var(--sh);text-align:center;padding:40px 20px;margin-top:10px}
   .hero .logo-big{height:230px;max-width:100%;margin:0 auto 14px;display:none}
   .hero h2{font-size:clamp(26px,5vw,40px);font-weight:800;letter-spacing:-.02em;line-height:1.15}
   .grad{color:var(--accent)}
   .hero p{color:var(--muted);margin:14px auto 0;max-width:560px;font-size:16px}
-  .hero p.note{margin-top:26px;padding:12px 16px;background:var(--soft);border-left:5px solid var(--orange);text-align:left;font-size:14px;color:var(--text)}
+  .hero p.note{margin-top:26px;padding:12px 16px;background:var(--soft);border-left:4px solid var(--mint);text-align:left;font-size:14px;color:var(--text)}
   .btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px}
-  button,.btn{font:inherit;font-weight:600;padding:10px 18px;cursor:pointer;color:var(--text);background:#fff;border:1px solid var(--border);transition:.1s;text-decoration:none;display:inline-block}
-  button:hover,.btn:hover{background:var(--soft);border-color:#8396a8}
+  button,.btn{font:inherit;font-weight:600;padding:10px 18px;cursor:pointer;color:var(--text);background:#fff;border:1px solid var(--border);border-radius:var(--r);transition:.12s;text-decoration:none;display:inline-block}
+  button:hover,.btn:hover{background:var(--soft);border-color:#9aa3c2}
   button.primary,.btn.primary{background:var(--accent);border-color:var(--accent-dark);color:#fff}
   button.primary:hover,.btn.primary:hover{background:var(--accent-dark)}
   button.danger{color:var(--danger)}
+  button.danger:hover{background:#fdecec;border-color:var(--danger)}
   button.small,.btn.small{padding:6px 12px;font-size:13px}
   label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:14px 0 6px}
   label .opt{font-weight:500;opacity:.85}
   label .req{font-weight:600;color:var(--danger);font-size:12px}
-  input,textarea,select{width:100%;font:inherit;color:var(--text);background:#fff;border:1px solid var(--border);padding:10px 12px;outline:none}
-  input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(47,109,181,.2)}
+  input,textarea,select{width:100%;font:inherit;color:var(--text);background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;outline:none}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,70,229,.18)}
   textarea{min-height:100px;resize:vertical}
-  .chk{display:flex;align-items:flex-start;gap:10px;margin-top:16px;padding:12px 14px;background:var(--accent-soft);border:1px solid #b7cde8;border-left:5px solid var(--accent);cursor:pointer;font-size:14px;font-weight:500;color:var(--text)}
+  .chk{display:flex;align-items:flex-start;gap:10px;margin-top:16px;padding:12px 14px;background:var(--accent-soft);border:1px solid #d3d0fa;border-left:4px solid var(--accent);border-radius:var(--r);cursor:pointer;font-size:14px;font-weight:500;color:var(--text)}
   .chk input{width:18px;height:18px;margin-top:2px;flex:none;accent-color:var(--accent)}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .row3{display:grid;grid-template-columns:1fr 2fr;gap:14px}
@@ -62,32 +65,32 @@
   .sub{color:var(--muted);font-size:14px;margin:6px 0}
   .msg{font-size:14px;margin-top:12px;min-height:20px}
   .msg.err{color:var(--danger)} .msg.ok{color:var(--ok)}
-  .tabs{display:flex;gap:0;flex-wrap:wrap;margin-bottom:20px;border-bottom:4px solid var(--accent)}
-  .tabs button{border:1px solid var(--border);border-bottom:0;background:#cdd6e0;margin-right:2px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+  .tabs button{background:#fff;color:var(--muted)}
   .tabs button.active{background:var(--accent);border-color:var(--accent);color:#fff}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
   @media(max-width:820px){.grid2{grid-template-columns:1fr}}
   .stack{display:flex;flex-direction:column;gap:20px}
   .list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
-  .item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 13px;border:1px solid var(--border);border-left:5px solid var(--accent);background:var(--soft)}
-  .item.click{cursor:pointer}
-  .item.click:hover{background:#e3ebf4}
+  .item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:var(--r);background:var(--soft)}
+  .item.click{cursor:pointer;transition:.12s}
+  .item.click:hover{background:#ecedf8}
   .item b{font-weight:600} .item small{color:var(--muted);display:block}
-  .avatar{width:40px;height:40px;flex:none;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700;font-size:14px}
-  .tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;background:var(--accent-soft);color:var(--accent-dark);border:1px solid #b7cde8;margin-left:6px;vertical-align:middle}
-  .tag.warn{background:#fff1d6;border-color:#f0cf86;color:#855400}
+  .avatar{width:40px;height:40px;flex:none;border-radius:var(--r);background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700;font-size:14px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;background:var(--accent-soft);color:var(--accent-dark);border:1px solid #d3d0fa;border-radius:var(--r);margin-left:6px;vertical-align:middle}
+  .tag.warn{background:#fff3d9;border-color:#f3d48a;color:#8a5a00}
   .stars{display:flex;gap:6px;font-size:34px;cursor:pointer;user-select:none}
-  .stars span{color:#c9d1d9;transition:.1s} .stars span.on{color:var(--gold)}
+  .stars span{color:#cdd2e0;transition:.1s} .stars span.on{color:var(--gold)}
   .review .st{color:var(--gold);letter-spacing:2px}
   .review p{margin-top:6px;white-space:pre-wrap;word-break:break-word}
   .hidden{display:none!important}
-  canvas{width:100%;height:auto;background:#fff;border:1px solid var(--border)}
+  canvas{width:100%;height:auto;background:#fff;border:1px solid var(--border);border-radius:var(--r)}
   .itemrow{display:grid;grid-template-columns:1fr 110px 40px;gap:8px;margin-bottom:8px}
   .total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-top:14px;padding-top:14px;border-top:2px solid var(--border)}
   .avg{display:inline-flex;align-items:center;gap:8px;margin-top:10px;color:var(--muted)}
   .avg b{color:var(--gold);font-size:22px}
   footer{text-align:center;color:var(--muted);font-size:13px;margin-top:40px}
-  .pwdots{height:46px;display:flex;align-items:center;justify-content:center;letter-spacing:8px;font-size:22px;border:1px solid var(--border);background:#fff;margin-bottom:10px;color:var(--text)}
+  .pwdots{height:46px;display:flex;align-items:center;justify-content:center;letter-spacing:8px;font-size:22px;border:1px solid var(--border);border-radius:var(--r);background:#fff;margin-bottom:10px;color:var(--text)}
   .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .pad button{padding:16px 0;font-size:22px;font-weight:700}
   .pad button.ok{background:var(--accent);border-color:var(--accent-dark);color:#fff}
@@ -95,36 +98,24 @@
   .pagehead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
   .pagehead h2{font-size:24px;font-weight:800;flex:1}
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px}
-  .tile{background:#fff;border:1px solid var(--border);border-left:5px solid var(--accent);padding:16px}
+  .tile{background:#fff;border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:var(--r);box-shadow:var(--sh);padding:16px}
   .tile small{color:var(--muted);font-weight:600;font-size:13px}
   .tile b{display:block;font-size:26px;font-weight:800;margin-top:2px}
-  .welcome{background:var(--accent);color:#fff;border-bottom:4px solid var(--orange);padding:22px 24px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
-  .welcome h2{font-size:24px;font-weight:800}
-  .welcome p{color:#dbe8f7;font-size:14px;text-transform:capitalize}
-  .welcome button.primary{background:var(--orange);border-color:#c96f12}
-  .welcome button.primary:hover{background:#d9770f}
-  .quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
-  .quick button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:16px;text-align:left;border-top:4px solid var(--accent)}
-  .quick button span{font-size:22px}
-  .quick button small{color:var(--muted);font-weight:500}
-  .folders{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:14px}
-  .folder{background:var(--soft);border:1px solid var(--border);border-top:5px solid var(--orange);padding:16px;cursor:pointer}
-  .folder:hover{background:#e3ebf4}
-  .folder .ico{font-size:30px}
-  .folder b{display:block;margin-top:4px}
-  .folder small{color:var(--muted)}
+  .welcome{background:linear-gradient(120deg,#0f1226,#2a2480);color:#fff;border-bottom:3px solid var(--mint);border-radius:var(--r);padding:26px 26px;margin-bottom:20px;box-shadow:var(--sh)}
+  .welcome h2{font-size:26px;font-weight:800}
+  .welcome p{color:#c9cdf0;font-size:14px;text-transform:capitalize;margin-top:2px}
   .infogrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:14px}
-  .infogrid div{border:1px solid var(--border);padding:10px 12px;background:var(--soft)}
+  .infogrid div{border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;background:var(--soft)}
   .infogrid small{display:block;color:var(--muted);font-size:12px;font-weight:600}
   .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
-  .overlay{position:fixed;inset:0;background:rgba(20,30,45,.65);display:grid;place-items:center;z-index:50;padding:16px}
-  .modal{background:#fff;width:min(92vw,360px);padding:22px;border-top:5px solid var(--orange);box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  .overlay{position:fixed;inset:0;background:rgba(15,18,38,.65);display:grid;place-items:center;z-index:50;padding:16px}
+  .modal{background:#fff;width:min(92vw,360px);padding:22px;border-radius:var(--r);border-top:4px solid var(--mint);box-shadow:0 20px 50px rgba(0,0,0,.35)}
   .modal h3{margin-bottom:14px}
   .modal .pwinput{margin-bottom:6px}
-  .loader{position:fixed;inset:0;background:rgba(221,227,234,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:100;font-weight:600;color:var(--muted)}
-  .spin{width:54px;height:54px;border:6px solid #c3ccd6;border-top-color:var(--accent);border-radius:50%;animation:spin .85s linear infinite}
+  .loader{position:fixed;inset:0;background:rgba(238,240,247,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:100;font-weight:600;color:var(--muted)}
+  .spin{width:54px;height:54px;border:6px solid #d3d7e6;border-top-color:var(--accent);border-radius:50%;animation:spin .85s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,30px);background:var(--bar);color:#fff;padding:12px 20px;opacity:0;pointer-events:none;transition:.25s;z-index:120;border-left:5px solid var(--orange)}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,30px);background:var(--bar);color:#fff;padding:12px 20px;border-radius:var(--r);opacity:0;pointer-events:none;transition:.25s;z-index:120;border-left:4px solid var(--mint)}
   .toast.show{opacity:1;transform:translate(-50%,0)}
   .sep{border:0;border-top:1px solid var(--border);margin:18px 0}
   .narrow2{max-width:660px;margin:0 auto}
@@ -132,6 +123,9 @@
   .searchrow{display:grid;grid-template-columns:200px 1fr;gap:10px;margin-top:12px}
   @media(max-width:560px){.searchrow{grid-template-columns:1fr}}
   .code{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em}
+  .itemrow{margin-bottom:12px}
+  .itemrow .colrow{grid-column:1/-1;display:flex;gap:8px}
+  .swatch{width:26px;height:26px;border:1px solid #9aa3c2;border-radius:4px;flex:none}
 </style>
 </head>
 <body>
@@ -140,6 +134,7 @@
   <div class="brand" id="brand">3D <i>Nainbus</i></div>
   <nav id="topNav"></nav>
   <div id="topActions"></div>
+  <div id="clock" aria-label="Heure"></div>
 </header>
 
 <div class="wrap">
@@ -236,31 +231,30 @@
     <!-- Accueil -->
     <div id="t-dash">
       <div class="welcome">
-        <div><h2>Bonjour 👋</h2><p id="todayTxt"></p></div>
-        <button class="primary" onclick="navTo('ticket')">🧾 Nouveau ticket</button>
+        <h2>Bonjour le roi Théo 👑</h2><p id="todayTxt"></p>
       </div>
       <div class="stats" id="stats"></div>
-      <div class="quick">
-        <button onclick="navTo('ticket')"><span>🧾</span><b>Nouveau ticket</b><small>Créer et télécharger</small></button>
-        <button onclick="openClients()"><span>👤</span><b>Clients</b><small>Fiches et suivi</small></button>
-        <button onclick="navTo('messages')"><span>💬</span><b>Messages</b><small>Demandes des clients</small></button>
-        <button onclick="navTo('avis')"><span>⭐</span><b>Avis</b><small>Modération</small></button>
-      </div>
       <div class="grid2">
         <div class="card"><h3>Derniers messages</h3><div class="list" id="dashMsgs"></div></div>
         <div class="card"><h3>Derniers avis</h3><div class="list" id="dashReviews"></div></div>
       </div>
     </div>
 
-    <!-- Nouveau ticket -->
+    <!-- Tickets -->
     <div id="t-ticket" class="hidden">
-      <div class="grid2">
+      <div class="tabs" id="ticketTabs">
+        <button data-ts="create" class="active">🧾 Créer un ticket</button>
+        <button data-ts="search">🔍 Chercher un ticket 🔒</button>
+      </div>
+
+      <div id="tk-create" class="grid2">
         <div class="card">
           <h3>Créer un ticket</h3>
           <p class="sub">Les objets et prix sont libres, le total est calculé automatiquement. Le numéro du ticket est généré au hasard.</p>
           <label for="tClient">Client</label>
           <select id="tClient" onchange="drawCurrent()"></select>
           <label>Objets</label>
+          <p class="sub" style="margin-top:0">Choisissez la couleur de filament prise. <button class="small" onclick="navTo('stock')">Stock de filaments</button></p>
           <div id="tItems"></div>
           <button class="small" onclick="addItemRow()">+ Ajouter une ligne</button>
           <div class="row">
@@ -276,19 +270,17 @@
           <input id="tNote" maxlength="70" oninput="drawCurrent()">
           <div class="total"><span>Total</span><span id="tTotal">0,00 €</span></div>
           <div class="actions">
-            <button class="primary" onclick="saveTicket()">💾 Enregistrer et télécharger</button>
-            <button onclick="resetTicket()">Nouveau ticket</button>
+            <button class="primary" onclick="saveTicket('site')">💾 Enregistrer dans le site</button>
+            <button onclick="saveTicket('pdf')">📄 Enregistrer et télécharger (PDF)</button>
+            <button onclick="saveTicket('share')">📤 Enregistrer et partager</button>
           </div>
+          <div class="actions" style="margin-top:10px"><button class="small" onclick="resetTicket()">Vider le formulaire</button></div>
         </div>
         <div class="card"><h3 style="margin-bottom:14px">Aperçu</h3><canvas id="ticketCanvas"></canvas></div>
       </div>
-    </div>
 
-    <!-- Historique -->
-    <div id="t-history" class="hidden">
-      <div class="stats" id="hStats"></div>
-      <div class="card">
-        <h3>Historique des tickets</h3>
+      <div id="tk-search" class="card hidden">
+        <h3>Chercher un ticket</h3>
         <div id="hSearchBox" class="searchrow">
           <select id="hField" onchange="hist.field=this.value;renderHistory()">
             <option value="all">Tous les critères</option>
@@ -301,6 +293,23 @@
           <input id="hSearch" placeholder="🔍 Rechercher un ticket…" oninput="hist.q=this.value;renderHistory()">
         </div>
         <div id="histBody"></div>
+      </div>
+    </div>
+
+    <!-- Stock de filaments -->
+    <div id="t-stock" class="hidden">
+      <div class="card">
+        <h3>Stock de filaments</h3>
+        <p class="sub">Appuyez sur « Plus en stock » quand une couleur est épuisée, et sur « Remettre en stock » quand elle revient. Les couleurs épuisées ne sont plus proposées dans les tickets.</p>
+        <div class="list" id="stockList"></div>
+        <hr class="sep">
+        <p class="sub"><b>Nouveau filament reçu ?</b> Ajoutez sa couleur ici.</p>
+        <div class="searchrow" style="grid-template-columns:1fr 64px auto;align-items:center">
+          <input id="newColName" maxlength="30" placeholder="Nom de la couleur (ex. Vert)">
+          <input type="color" id="newColHex" value="#16a34a" style="height:42px;padding:3px">
+          <button class="primary" onclick="addColor()">+ Ajouter</button>
+        </div>
+        <div class="msg" id="stMsg"></div>
       </div>
     </div>
 
@@ -318,6 +327,7 @@
 
     <!-- Réglages -->
     <div id="t-reglages" class="hidden">
+      <div class="card" style="margin-bottom:20px"><h3>Chiffre d'affaires</h3><div class="stats" id="caStats" style="margin:14px 0 0"></div></div>
       <div class="grid2">
         <div class="stack">
           <div class="card">
@@ -462,6 +472,15 @@
   </div>
 </div>
 
+<!-- Confirmation -->
+<div id="sure" class="overlay hidden">
+  <div class="modal">
+    <h3>Confirmation</h3>
+    <p id="sureTxt" class="sub" style="font-size:15px;color:var(--text)"></p>
+    <div class="actions"><button class="primary" onclick="sureYes()">Oui</button><button onclick="sureNo()">Annuler</button></div>
+  </div>
+</div>
+
 <!-- Faux chargement -->
 <div id="loader" class="loader hidden"><div class="spin"></div><div id="loaderTxt">Chargement…</div></div>
 <div id="toast" class="toast"></div>
@@ -475,7 +494,7 @@ const SITE_URL  = "nainbus3d.vercel.app";
    url : adresse d'envoi du service, key : clé d'accès (si le service en demande une).
    Tant que "url" est vide, les messages restent sur l'appareil où ils sont écrits. */
 const CONTACT = { url: "", key: "" };
-const K = {pass:"nb_pass2", clients:"nb_clients", reviews:"nb_reviews", logo:"nb_logo", tn:"nb_ticketn", tickets:"nb_tickets", messages:"nb_messages"};
+const K = {pass:"nb_pass2", clients:"nb_clients", reviews:"nb_reviews", logo:"nb_logo", tn:"nb_ticketn", tickets:"nb_tickets", messages:"nb_messages", stock:"nb_stock"};
 const AUTH = {u:"6aeadee6393f09bcc86fc51cd989c5399e90b69a830de1c9fde4cc292f9467f5", p:"d15aa519613b2ba812c6be6091d4fe70e9dd37768dca1323603b15778f1162a3"};
 const QUICK_CODE = "1986";   // code rapide accepté une fois connecté (pas pour la connexion)
 /* Logo d'origine intégré */
@@ -499,7 +518,7 @@ function randomCode(){
 }
 function newTicketNumber(){
   const used = new Set(load(K.tickets, []).map(t => String(t.number)));
-  let c; do { c = randomCode(); } while(used.has(c));
+  let c; do { c = "NB-" + randomCode(); } while(used.has(c));
   return c;
 }
 const tdisp = n => typeof n === "number" ? String(n).padStart(4,"0") : String(n);
@@ -604,11 +623,11 @@ async function changePw(){
 /* ============ Navigation ============ */
 const views = ["home","client","adminLogin","admin","clients","clientForm","clientDetail"];
 const PROTECTED = ["admin","clients","clientForm","clientDetail"];
-const LOCKED = ["history","reglages"];
-const NAV = [["dash","Accueil"],["ticket","Nouveau ticket"],["history","Historique"],["avis","Avis"],["messages","Messages"],["reglages","Réglages"]];
+const LOCKED = ["reglages"];
+const NAV = [["dash","Accueil"],["ticket","Tickets"],["stock","Stock"],["avis","Avis"],["messages","Messages"],["reglages","Réglages"]];
 const USER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>';
 let curTab = "dash", curView = "home", passLock = false;
-const ADMIN_TABS = ["dash","ticket","history","avis","messages","reglages"];
+const ADMIN_TABS = ["dash","ticket","stock","avis","messages","reglages"];
 
 function go(v){
   if(PROTECTED.includes(v) && !isAdmin()) v = "adminLogin";
@@ -644,16 +663,50 @@ function navTo(t){
 }
 function openClients(){ askCode(() => loadFor(1000, 2000, () => go("clients"), "Ouverture de l'espace client…")); }
 
+let ticketSub = "create", searchUnlocked = false;
+function setTicketSub(sb){
+  if(sb === "search" && !searchUnlocked){
+    askCode(() => loadFor(800, 1400, () => { searchUnlocked = true; ticketSub = "search"; hist = {q:"", field:"all", open:null}; renderTicketSub(); }), "Code pour chercher un ticket");
+    return;
+  }
+  ticketSub = sb; renderTicketSub();
+}
+function renderTicketSub(){
+  document.querySelectorAll("#ticketTabs button").forEach(b => b.classList.toggle("active", b.dataset.ts === ticketSub));
+  $("tk-create").classList.toggle("hidden", ticketSub !== "create");
+  $("tk-search").classList.toggle("hidden", ticketSub !== "search");
+  if(ticketSub === "search"){ $("hSearch").value = hist.q || ""; $("hField").value = hist.field || "all"; renderHistory(); }
+  else drawCurrent();
+}
+$("ticketTabs").addEventListener("click", e => { const b = e.target.closest("button[data-ts]"); if(b) setTicketSub(b.dataset.ts); });
+
 function showTab(t){
   curTab = t;
+  if(t !== "ticket"){ searchUnlocked = false; ticketSub = "create"; }
   ADMIN_TABS.forEach(x => $("t-"+x).classList.toggle("hidden", x !== t));
   if(t === "dash") renderDash();
-  if(t === "ticket"){ renderTicketClients(); if(!items.length) addItemRow(); drawCurrent(); }
-  if(t === "history"){ hist = {folder:null, q:"", field:"all", open:null}; $("hSearch").value = ""; $("hField").value = "all"; renderHistory(); }
+  if(t === "ticket"){ renderTicketClients(); if(!items.length) items.push({name:"", price:"", color:""}); renderItems(); renderTicketSub(); }
+  if(t === "stock") renderStock();
   if(t === "avis") renderAdminReviews();
   if(t === "messages") renderMessages();
+  if(t === "reglages") renderCA();
   renderTop();
 }
+function renderCA(){
+  const all = load(K.tickets, []), now = new Date(), ym = now.getFullYear() + "-" + now.getMonth();
+  const month = all.filter(t => { const d = new Date(t.date); return d.getFullYear()+"-"+d.getMonth() === ym; });
+  const sum = a => a.reduce((x,t) => x + t.total, 0);
+  $("caStats").innerHTML = [
+    ["Chiffre d'affaires total", money(sum(all))], ["Ce mois-ci", money(sum(month))],
+    ["Tickets", all.length], ["Panier moyen", money(all.length ? sum(all)/all.length : 0)]
+  ].map(([l,v]) => `<div class="tile"><small>${l}</small><b>${v}</b></div>`).join("");
+}
+
+/* Fenêtre de confirmation (remplace la fenêtre du navigateur, parfois bloquée) */
+let sureCb = null;
+function sure(msg, cb){ sureCb = cb; $("sureTxt").textContent = msg; $("sure").classList.remove("hidden"); }
+function sureNo(){ $("sure").classList.add("hidden"); sureCb = null; }
+function sureYes(){ const cb = sureCb; sureNo(); if(cb) cb(); }
 
 /* ============ Logo ============ */
 const logoImg = new Image();
@@ -762,13 +815,12 @@ function showClientDetail(id){
       <b>${money(t.total)}</b></div>`).join("") : '<p class="sub">Aucun ticket pour ce client.</p>';
 }
 function deleteClient(id){
-  if(!confirm("Supprimer ce client ? Ses tickets resteront dans l'historique.")) return;
-  askCode(() => loadFor(1200, 2000, () => {
+  sure("Supprimer ce client ? Ses tickets resteront dans l'historique.", () => askCode(() => loadFor(1200, 2000, () => {
     save(K.clients, load(K.clients, []).filter(c => c.id !== id));
     toast("Client supprimé"); go("clients");
-  }, "Suppression…"));
+  }, "Suppression…"), "Code pour supprimer le client"));
 }
-function ticketFor(id){ passLock = false; curTab = "ticket"; go("admin"); $("tClient").value = id; drawCurrent(); }
+function ticketFor(id){ passLock = false; curTab = "ticket"; ticketSub = "create"; go("admin"); $("tClient").value = id; drawCurrent(); }
 
 /* ============ Sécurité des textes (avis et messages) ============ */
 // @FILTER_START
@@ -925,8 +977,7 @@ function toggleRead(id){
   if(m){ m.read = !m.read; save(K.messages, list); renderMessages(); }
 }
 function delMessage(id){
-  if(!confirm("Supprimer ce message ?")) return;
-  save(K.messages, load(K.messages, []).filter(m => m.id !== id)); renderMessages();
+  sure("Supprimer ce message ?", () => { save(K.messages, load(K.messages, []).filter(m => m.id !== id)); renderMessages(); toast("Message supprimé"); });
 }
 
 const starStr = n => "★".repeat(n) + "☆".repeat(5-n);
@@ -949,8 +1000,7 @@ function renderAdminReviews(){
     : '<p class="sub">Aucun avis.</p>';
 }
 function delReview(id){
-  save(K.reviews, load(K.reviews, []).filter(r => r.id !== id));
-  renderAdminReviews();
+  sure("Supprimer cet avis ?", () => { save(K.reviews, load(K.reviews, []).filter(r => r.id !== id)); renderAdminReviews(); toast("Avis supprimé"); });
 }
 
 /* ============ Ticket : création ============ */
@@ -961,14 +1011,69 @@ function renderTicketClients(){
     load(K.clients, []).map(c => `<option value="${c.id}">${esc(c.first)} ${esc(c.last)}</option>`).join("");
   sel.value = cur;
 }
-function addItemRow(){ items.push({name:"", price:""}); renderItems(); }
+function addItemRow(){ items.push({name:"", price:"", color:""}); renderItems(); }
+function colorOpts(sel){
+  const st = getStock();
+  let o = '<option value="">Couleur du filament (facultatif)</option>';
+  if(sel && !st.some(c => c.name === sel)) o += `<option value="${esc(sel)}" selected>${esc(sel)}</option>`;
+  return o + st.map(c => `<option value="${esc(c.name)}" ${c.name === sel ? "selected" : ""} ${!c.inStock && c.name !== sel ? "disabled" : ""}>${esc(c.name)}${c.inStock ? "" : " — plus en stock"}</option>`).join("");
+}
 function renderItems(){
-  $("tItems").innerHTML = items.map((it,i) => `
+  const st = getStock();
+  $("tItems").innerHTML = items.map((it,i) => {
+    const c = st.find(x => x.name === it.color);
+    return `
     <div class="itemrow">
       <input placeholder="Objet" value="${esc(it.name)}" oninput="items[${i}].name=this.value;drawCurrent()">
       <input placeholder="Prix €" inputmode="decimal" value="${esc(it.price)}" oninput="items[${i}].price=this.value;drawCurrent()">
       <button class="small danger" onclick="items.splice(${i},1);renderItems();drawCurrent()">✕</button>
-    </div>`).join("");
+      <div class="colrow"><select onchange="items[${i}].color=this.value;renderItems();drawCurrent()">${colorOpts(it.color)}</select>
+        ${c && c.inStock ? `<button class="small" title="Marquer cette couleur comme épuisée" onclick="markOut(${i})">Épuisé ?</button>` : ""}</div>
+    </div>`;
+  }).join("");
+}
+
+/* ============ Stock de filaments ============ */
+const DEFAULT_STOCK = [["Bleu foncé","#1e3a8a"],["Rouge","#dc2626"],["Noir","#111827"],["Blanc","#f8fafc"]];
+function getStock(){
+  let s = load(K.stock, null);
+  if(!Array.isArray(s)){ s = DEFAULT_STOCK.map(([name,hex],i) => ({id:"d"+i, name, hex, inStock:true})); save(K.stock, s); }
+  return s;
+}
+function renderStock(){
+  const s = getStock();
+  $("stockList").innerHTML = s.length ? s.map(c => `
+    <div class="item" style="border-left-color:${c.inStock ? "var(--ok)" : "var(--danger)"}">
+      <div style="display:flex;align-items:center;gap:12px"><span class="swatch" style="background:${esc(c.hex)}"></span>
+        <div><b>${esc(c.name)}</b><small>${c.inStock ? "✅ En stock" : "❌ Plus en stock"}</small></div></div>
+      <div class="actions" style="margin:0">
+        <button class="small ${c.inStock ? "" : "primary"}" onclick="toggleStock('${c.id}')">${c.inStock ? "Plus en stock" : "Remettre en stock"}</button>
+        <button class="small danger" onclick="delColor('${c.id}')">Supprimer</button></div></div>`).join("")
+    : '<p class="sub">Aucune couleur. Ajoutez-en une ci-dessous.</p>';
+}
+function addColor(){
+  const name = $("newColName").value.trim(), hex = $("newColHex").value, m = $("stMsg");
+  m.className = "msg err";
+  if(!name){ m.textContent = "Donnez un nom à la couleur."; return; }
+  const s = getStock();
+  if(s.some(c => c.name.toLowerCase() === name.toLowerCase())){ m.textContent = "Cette couleur existe déjà."; return; }
+  s.push({id:uid(), name, hex, inStock:true}); save(K.stock, s);
+  $("newColName").value = ""; m.className = "msg ok"; m.textContent = name + " ajoutée au stock ✔";
+  renderStock();
+}
+function toggleStock(id){
+  const s = getStock(), c = s.find(x => x.id === id); if(!c) return;
+  c.inStock = !c.inStock; save(K.stock, s); renderStock();
+  toast(c.name + (c.inStock ? " : remis en stock" : " : plus en stock"));
+}
+function delColor(id){
+  const c = getStock().find(x => x.id === id); if(!c) return;
+  sure("Supprimer la couleur « " + c.name + " » du stock ?", () => { save(K.stock, getStock().filter(x => x.id !== id)); renderStock(); toast("Couleur supprimée"); });
+}
+function markOut(i){
+  const name = items[i].color, s = getStock(), c = s.find(x => x.name === name);
+  if(c){ c.inStock = false; save(K.stock, s); toast(name + " : plus en stock"); }
+  renderItems();
 }
 function currentTicketData(){
   const c = load(K.clients, []).find(x => x.id === $("tClient").value);
@@ -993,19 +1098,66 @@ function resetTicket(){
   $("tClient").value = ""; $("tDisc").value = ""; $("tPay").value = ""; $("tNote").value = "";
   drawCurrent();
 }
-function saveTicket(){
+function ticketCanvas(d){ const cv = document.createElement("canvas"); drawTicket(cv, d); return cv; }
+const canvasBlob = (cv, type, q) => new Promise(r => cv.toBlob(r, type, q));
+/* PDF : une page contenant l'image du ticket (aucune bibliothèque nécessaire) */
+function buildPdf(jpeg, iw, ih){
+  const pw = 300, ph = Math.round(pw * ih / iw * 10) / 10, enc = new TextEncoder(), parts = [], offs = [];
+  let len = 0;
+  const push = b => { if(typeof b === "string") b = enc.encode(b); parts.push(b); len += b.length; };
+  push("%PDF-1.4\n");
+  offs[1] = len; push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  offs[2] = len; push("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+  offs[3] = len; push(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pw} ${ph}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`);
+  offs[4] = len; push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${iw} /Height ${ih} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`);
+  push(jpeg); push("\nendstream\nendobj\n");
+  const content = `q ${pw} 0 0 ${ph} 0 0 cm /Im0 Do Q`;
+  offs[5] = len; push(`5 0 obj\n<< /Length ${content.length} >>\nstream\n${content}\nendstream\nendobj\n`);
+  const xref = len; let x = "xref\n0 6\n0000000000 65535 f \n";
+  for(let i = 1; i <= 5; i++) x += String(offs[i]).padStart(10,"0") + " 00000 n \n";
+  push(x + `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return new Blob(parts, {type:"application/pdf"});
+}
+async function makePdf(cv){
+  const jb = await canvasBlob(cv, "image/jpeg", 0.92);
+  return buildPdf(new Uint8Array(await jb.arrayBuffer()), cv.width, cv.height);
+}
+function showPdf(blob, name, win){
+  const url = URL.createObjectURL(blob);
+  if(win && !win.closed){ win.location.href = url; }
+  else { const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+  setTimeout(() => URL.revokeObjectURL(url), 120000);
+}
+async function pdfFor(d, win){ showPdf(await makePdf(ticketCanvas(d)), "ticket-3D-Nainbus-" + tdisp(d.number) + ".pdf", win); }
+function openBlankWin(){
+  let w = null;
+  try{ w = window.open("", "_blank"); if(w) w.document.write("<p style='font-family:sans-serif;padding:20px'>Création du PDF…</p>"); }catch(e){}
+  return w;
+}
+/* Partage : ouvre la feuille de partage du téléphone avec l'image (Tiny Print, etc.) */
+async function shareTicket(d){
+  try{
+    const blob = await canvasBlob(ticketCanvas(d), "image/png");
+    const file = new File([blob], "ticket-3D-Nainbus-" + tdisp(d.number) + ".png", {type:"image/png"});
+    if(navigator.canShare && navigator.canShare({files:[file]})) await navigator.share({files:[file], title:"Ticket " + tdisp(d.number)});
+    else { downloadCanvas(ticketCanvas(d), file.name); toast("Partage indisponible ici : l'image a été téléchargée."); }
+  }catch(e){ if(!e || e.name !== "AbortError") toast("Partage impossible sur cet appareil"); }
+}
+function saveTicket(mode){
   const d = currentTicketData();
   if(!d.items.length){ toast("Ajoutez au moins un objet"); return; }
-  loadFor(2000, 3000, () => {
-    const used = new Set(load(K.tickets, []).map(t => String(t.number)));
-    if(used.has(String(d.number))) d.number = newTicketNumber();   // sécurité : jamais deux fois le même numéro
-    d.id = uid(); d.date = Date.now();
-    const list = load(K.tickets, []); list.push(d); save(K.tickets, list);
-    drawTicket($("ticketCanvas"), d);
-    downloadCanvas($("ticketCanvas"), "ticket-3D-Nainbus-" + tdisp(d.number) + ".png");
-    toast("Ticket n° " + tdisp(d.number) + " enregistré dans l'historique ✔");
-    resetTicket();
-  }, "Enregistrement du ticket…");
+  const win = mode === "pdf" ? openBlankWin() : null;     // doit être ouvert tout de suite (clic)
+  const used = new Set(load(K.tickets, []).map(t => String(t.number)));
+  if(used.has(String(d.number))) d.number = newTicketNumber();   // sécurité : jamais deux fois le même numéro
+  d.id = uid(); d.date = Date.now();
+  const list = load(K.tickets, []); list.push(d); save(K.tickets, list);
+  const done = () => { toast("Ticket n° " + tdisp(d.number) + " enregistré ✔"); resetTicket(); };
+  if(mode === "share"){ shareTicket(d); done(); return; }
+  if(mode === "pdf"){
+    withLoader("Création du PDF…", 1500, 2500, () => pdfFor(d, win)).then(r => { if(r === "fail") toast("Impossible de créer le PDF"); done(); });
+    return;
+  }
+  loadFor(1500, 2500, done, "Enregistrement du ticket…");
 }
 function downloadCanvas(cv, name){
   cv.toBlob(b => {
@@ -1046,7 +1198,7 @@ function drawTicket(cv, d){
   if(!d.items.length){ x.textAlign="left"; x.fillStyle="#aaa"; x.fillText("—", 30, y); y += rowH; }
   d.items.forEach(it => {
     x.textAlign="left"; x.fillStyle="#111";
-    const base = it.name.trim() || "Objet"; let name = base;
+    const base = (it.name.trim() || "Objet") + (it.color ? " (" + it.color + ")" : ""); let name = base;
     while(x.measureText(name).width > W-190 && name.length>1) name = name.slice(0,-1);
     if(name !== base) name += "…";
     x.fillText(name, 30, y);
@@ -1073,11 +1225,11 @@ function drawTicket(cv, d){
   x.fillText(SITE_URL, W/2, y);
 }
 
-/* ============ Historique des tickets (dossiers par mois) ============ */
-let hist = {folder:null, q:"", field:"all", open:null};
-const monthKey = t => { const d = new Date(t); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0"); };
-const monthLabel = k => { const [y,m] = k.split("-"); const s = new Date(+y, +m-1, 1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"}); return s[0].toUpperCase() + s.slice(1); };
+/* ============ Recherche de tickets ============ */
+let hist = {q:"", field:"all", open:null};
 const tnum = t => "n° " + tdisp(t.number);
+const alnum = v => String(v).replace(/[^a-z0-9]/gi, "").toUpperCase();
+const digits = v => String(v).replace(/\D/g, "");
 /* Infos du client d'un ticket : fiche actuelle si elle existe, sinon copie enregistrée sur le ticket */
 function ticketClient(t){
   const c = t.clientId ? load(K.clients, []).find(x => x.id === t.clientId) : null;
@@ -1085,19 +1237,20 @@ function ticketClient(t){
   const parts = (t.client || "").split(" ");
   return {first:t.first || parts[0] || "", last:t.last || parts.slice(1).join(" "), mail:t.mail||"", tel:t.tel||""};
 }
-const digits = s => String(s).replace(/\D/g,"");
 function matchTicket(t, q, field){
   const c = ticketClient(t), ql = q.toLowerCase();
   const has = v => String(v).toLowerCase().includes(ql);
+  const numHit = () => alnum(q).length > 0 && alnum(tdisp(t.number)).includes(alnum(q));
+  const telHit = () => digits(q) ? digits(c.tel).includes(digits(q)) : has(c.tel);
   switch(field){
     case "first": return has(c.first);
     case "last": return has(c.last);
     case "mail": return has(c.mail);
-    case "tel": return digits(q) ? digits(c.tel).includes(digits(q)) : has(c.tel);
-    case "number": return has(tdisp(t.number));
+    case "tel": return telHit();
+    case "number": return numHit();
     default:
-      return [c.first, c.last, c.mail, tdisp(t.number), t.pay, t.note, t.items.map(i => i.name).join(" ")].some(has)
-        || (digits(q).length >= 3 && digits(c.tel).includes(digits(q)));
+      return [c.first, c.last, c.mail, t.pay, t.note, t.items.map(i => i.name + " " + (i.color || "")).join(" ")].some(has)
+        || (alnum(q).length >= 2 && numHit()) || (digits(q).length >= 3 && telHit());
   }
 }
 function ticketRow(t){
@@ -1106,53 +1259,29 @@ function ticketRow(t){
     <small>${fdate(t.date)} · ${t.items.length} objet${t.items.length>1?"s":""}${t.pay ? " · " + esc(t.pay) : ""}</small></div>
     <b>${money(t.total)}</b></div>`;
 }
-function renderHistStats(all){
-  const now = new Date(), ym = now.getFullYear() + "-" + now.getMonth();
-  const month = all.filter(t => { const d = new Date(t.date); return d.getFullYear()+"-"+d.getMonth() === ym; });
-  const sum = a => a.reduce((x,t) => x + t.total, 0);
-  $("hStats").innerHTML = [
-    ["Chiffre d'affaires total", money(sum(all))], ["Ce mois-ci", money(sum(month))],
-    ["Tickets", all.length], ["Panier moyen", money(all.length ? sum(all)/all.length : 0)]
-  ].map(([l,v]) => `<div class="tile"><small>${l}</small><b>${v}</b></div>`).join("");
-}
 function renderHistory(){
   const all = load(K.tickets, []).slice().sort((a,b) => b.date - a.date), body = $("histBody");
   $("hSearchBox").classList.toggle("hidden", !!hist.open);
-  $("hStats").classList.toggle("hidden", !!hist.open);
-  renderHistStats(all);
   if(hist.open){ renderTicketDetail(all.find(t => t.id === hist.open)); return; }
   const q = (hist.q || "").trim();
-  if(q){
-    const res = all.filter(t => matchTicket(t, q, hist.field || "all"));
-    body.innerHTML = `<p class="sub">${res.length} résultat${res.length>1?"s":""}</p><div class="list">${res.map(ticketRow).join("")}</div>`;
-    return;
-  }
-  if(!all.length){ body.innerHTML = '<p class="sub" style="margin-top:14px">Aucun ticket enregistré pour le moment.</p>'; return; }
-  if(hist.folder){
-    const inF = all.filter(t => monthKey(t.date) === hist.folder);
-    body.innerHTML = `<div class="actions" style="margin-top:14px"><button class="small" onclick="hist.folder=null;renderHistory()">← Dossiers</button></div>
-      <h3 style="margin-top:14px">📂 ${monthLabel(hist.folder)}</h3><div class="list">${inF.map(ticketRow).join("")}</div>`;
-    return;
-  }
-  const groups = {};
-  all.forEach(t => { (groups[monthKey(t.date)] = groups[monthKey(t.date)] || []).push(t); });
-  body.innerHTML = '<div class="folders">' + Object.keys(groups).sort().reverse().map(k => {
-    const g = groups[k];
-    return `<div class="folder" onclick="hist.folder='${k}';renderHistory()"><div class="ico">📁</div>
-      <b>${monthLabel(k)}</b><small>${g.length} ticket${g.length>1?"s":""} · ${money(g.reduce((a,t) => a + t.total, 0))}</small></div>`;
-  }).join("") + '</div>';
+  if(!q){ body.innerHTML = '<p class="sub" style="margin-top:14px">Choisissez un critère puis tapez votre recherche pour retrouver un ticket.</p>'; return; }
+  const res = all.filter(t => matchTicket(t, q, hist.field || "all"));
+  body.innerHTML = res.length
+    ? `<p class="sub">${res.length} résultat${res.length>1?"s":""}</p><div class="list">${res.map(ticketRow).join("")}</div>`
+    : '<p class="sub" style="margin-top:14px">Aucun ticket trouvé.</p>';
 }
 function openTicket(id){ loadFor(800, 1500, () => { hist.open = id; renderHistory(); }, "Ouverture du ticket…"); }
 function renderTicketDetail(t){
   if(!t){ hist.open = null; renderHistory(); return; }
   const c = ticketClient(t);
-  $("histBody").innerHTML = `<div class="actions" style="margin:14px 0"><button class="small" onclick="hist.open=null;renderHistory()">← Retour</button></div>
+  $("histBody").innerHTML = `<div class="actions" style="margin:14px 0"><button class="small" onclick="hist.open=null;renderHistory()">← Retour aux résultats</button></div>
     <div class="grid2"><canvas id="histCanvas"></canvas>
     <div><h3>Ticket <span class="code">${esc(tnum(t))}</span></h3>
       <p class="sub">${fdate(t.date)}${t.client ? " · " + esc(t.client) : ""}</p>
       ${c.mail || c.tel ? `<p class="sub">${[c.mail,c.tel].filter(Boolean).map(esc).join(" · ")}</p>` : ""}
       <div class="total"><span>Total</span><span>${money(t.total)}</span></div>
-      <div class="actions"><button class="primary" onclick="downloadStored('${t.id}')">⬇️ Télécharger l'image</button>
+      <div class="actions"><button class="primary" onclick="downloadStored('${t.id}')">📄 Télécharger (PDF)</button>
+      <button onclick="shareStored('${t.id}')">📤 Partager</button>
       <button class="danger" onclick="deleteTicket('${t.id}')">🗑 Supprimer</button></div></div></div>`;
   drawHist();
 }
@@ -1162,21 +1291,23 @@ function drawHist(){
 }
 function downloadStored(id){
   const t = load(K.tickets, []).find(x => x.id === id); if(!t) return;
-  const cv = document.createElement("canvas"); drawTicket(cv, t);
-  downloadCanvas(cv, "ticket-3D-Nainbus-" + tdisp(t.number) + ".png");
+  const win = openBlankWin();
+  withLoader("Création du PDF…", 800, 1400, () => pdfFor(t, win)).then(r => { if(r === "fail") toast("Impossible de créer le PDF"); });
+}
+function shareStored(id){
+  const t = load(K.tickets, []).find(x => x.id === id); if(t) shareTicket(t);
 }
 function deleteTicket(id){
-  if(!confirm("Supprimer ce ticket de l'historique ?")) return;
-  askCode(() => loadFor(1200, 2000, () => {
+  sure("Supprimer ce ticket de l'historique ?", () => askCode(() => loadFor(1200, 2000, () => {
     save(K.tickets, load(K.tickets, []).filter(t => t.id !== id));
     hist.open = null; renderHistory(); toast("Ticket supprimé");
-  }, "Suppression…"));
+  }, "Suppression…"), "Code pour supprimer le ticket"));
 }
 
 /* ============ Sauvegarde ============ */
 function exportData(){
   askCode(() => {
-    const data = {version:2, date:new Date().toISOString(), clients:load(K.clients,[]), reviews:load(K.reviews,[]), tickets:load(K.tickets,[]), messages:load(K.messages,[])};
+    const data = {version:2, date:new Date().toISOString(), clients:load(K.clients,[]), reviews:load(K.reviews,[]), tickets:load(K.tickets,[]), messages:load(K.messages,[]), stock:getStock()};
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:"application/json"}));
     a.download = "sauvegarde-3d-nainbus-" + new Date().toISOString().slice(0,10) + ".json";
@@ -1191,27 +1322,27 @@ function importData(inp){
     try{
       const d = JSON.parse(r.result);
       if(!Array.isArray(d.clients) || !Array.isArray(d.tickets) || !Array.isArray(d.reviews)) throw 0;
-      if(confirm("Remplacer toutes les données actuelles par cette sauvegarde ?")){
-        askCode(() => loadFor(2000, 3000, () => {
-          save(K.clients, d.clients); save(K.reviews, d.reviews); save(K.tickets, d.tickets);
-          if(Array.isArray(d.messages)) save(K.messages, d.messages);
-          toast("Sauvegarde restaurée ✔");
-        }, "Restauration…"));
-      }
+      sure("Remplacer toutes les données actuelles par cette sauvegarde ?", () => askCode(() => loadFor(2000, 3000, () => {
+        save(K.clients, d.clients); save(K.reviews, d.reviews); save(K.tickets, d.tickets);
+        if(Array.isArray(d.messages)) save(K.messages, d.messages);
+        if(Array.isArray(d.stock)) save(K.stock, d.stock);
+        toast("Sauvegarde restaurée ✔");
+      }, "Restauration…"), "Code pour restaurer la sauvegarde"));
     }catch(e){ toast("Fichier de sauvegarde invalide"); }
     inp.value = "";
   };
   r.readAsText(f);
 }
 function wipeAll(){
-  if(!confirm("Effacer tous les clients, tickets et avis ? Cette action est définitive.")) return;
-  askCode(() => loadFor(1500, 2500, () => {
+  sure("Effacer tous les clients, tickets et avis ? Cette action est définitive.", () => askCode(() => loadFor(1500, 2500, () => {
     [K.clients, K.reviews, K.tickets, K.tn, K.messages].forEach(k => localStorage.removeItem(k));
     toast("Données effacées");
-  }, "Suppression…"));
+  }, "Suppression…"), "Code pour tout effacer"));
 }
 
 /* ============ Démarrage ============ */
+function tickClock(){ $("clock").textContent = new Date().toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"}); }
+tickClock(); setInterval(tickClock, 1000);
 initLogo();
 go(isAdmin() ? "admin" : "home");
 </script>
