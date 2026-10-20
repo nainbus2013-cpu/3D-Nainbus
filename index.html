@@ -61,6 +61,11 @@
   .avg{display:inline-flex;align-items:center;gap:8px;margin-top:10px;color:var(--muted)}
   .avg b{color:#f0a500;font-size:22px}
   footer{text-align:center;color:var(--muted);font-size:13px;margin-top:40px}
+  .pwdots{height:46px;display:flex;align-items:center;justify-content:center;letter-spacing:8px;font-size:22px;border:1px solid var(--border);background:#fff;margin-bottom:10px;color:var(--text)}
+  .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .pad button{padding:16px 0;font-size:22px;font-weight:700}
+  .pad button.ok{background:var(--accent);border-color:var(--accent-dark);color:#fff}
+  .pad button.ok:hover{background:var(--accent-dark)}
 </style>
 </head>
 <body>
@@ -107,19 +112,14 @@
   <!-- CONNEXION GÉRANT -->
   <section id="v-adminLogin" class="hidden">
     <div class="card narrow">
-      <h3 id="loginTitle">Espace gérant</h3>
-      <p class="sub" id="loginSub">Entrez votre mot de passe.</p>
-      <label for="pw1">Mot de passe</label>
-      <input type="password" id="pw1" autocomplete="current-password">
-      <div id="pw2Box" class="hidden">
-        <label for="pw2">Confirmer le mot de passe</label>
-        <input type="password" id="pw2" autocomplete="new-password">
-      </div>
-      <div style="margin-top:18px;display:flex;gap:10px">
-        <button class="primary" id="loginBtn" onclick="login()">Connexion</button>
-        <button onclick="go('home')">Retour</button>
-      </div>
+      <h3>Espace gérant</h3>
+      <label for="lgUser">Identifiant</label>
+      <input id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false">
+      <label>Mot de passe</label>
+      <div class="pwdots" id="pwDots"></div>
+      <div class="pad" id="pad"></div>
       <div class="msg err" id="loginMsg"></div>
+      <div style="margin-top:8px"><button onclick="go('home')">Retour</button></div>
     </div>
   </section>
 
@@ -194,8 +194,8 @@
         </div>
         <div class="card">
           <h3>Changer le mot de passe</h3>
-          <label for="npw">Nouveau mot de passe (6 caractères min.)</label>
-          <input type="password" id="npw" autocomplete="new-password">
+          <label for="npw">Nouveau mot de passe (chiffres uniquement, 6 min.)</label>
+          <input type="password" id="npw" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password">
           <div style="margin-top:14px"><button class="primary" onclick="changePw()">Enregistrer</button></div>
           <div class="msg" id="pwMsg"></div>
         </div>
@@ -210,7 +210,7 @@
 /* ============ Constantes & stockage ============ */
 const SITE_NAME = "3D Nainbus";
 const SITE_URL  = "nainbus3d.vercel.app";
-const K = {pass:"nb_pass", clients:"nb_clients", reviews:"nb_reviews", logo:"nb_logo", tn:"nb_ticketn"};
+const K = {pass:"nb_pass2", clients:"nb_clients", reviews:"nb_reviews", logo:"nb_logo", tn:"nb_ticketn"};
 const $ = id => document.getElementById(id);
 const load = (k,d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(e){ return d; } };
 const save = (k,v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ alert("Stockage impossible (image trop lourde ?)"); } };
@@ -266,31 +266,43 @@ async function sha(s){
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,"0")).join("");
 }
-function prepLogin(){
-  const first = !load(K.pass, null);
-  $("pw2Box").classList.toggle("hidden", !first);
-  $("loginTitle").textContent = first ? "Créer votre mot de passe" : "Espace gérant";
-  $("loginSub").textContent = first ? "Première connexion : choisissez un mot de passe (6 caractères min.)." : "Entrez votre mot de passe.";
-  $("loginBtn").textContent = first ? "Créer et entrer" : "Connexion";
-  $("pw1").value = ""; $("pw2").value = ""; $("loginMsg").textContent = "";
+const AUTH = {u:"6aeadee6393f09bcc86fc51cd989c5399e90b69a830de1c9fde4cc292f9467f5", p:"d15aa519613b2ba812c6be6091d4fe70e9dd37768dca1323603b15778f1162a3"};
+let pin = "";
+function buildPad(){
+  const keys = ["1","2","3","4","5","6","7","8","9","del","0","ok"];
+  $("pad").innerHTML = keys.map(k => `<button type="button" class="${k==='ok'?'ok':''}" onclick="pressKey('${k}')">${k==='del'?'⌫':k==='ok'?'✓':k}</button>`).join("");
+}
+function showDots(){ $("pwDots").textContent = pin ? "●".repeat(pin.length) : ""; }
+function pressKey(k){
+  if(k==="del") pin = pin.slice(0,-1);
+  else if(k==="ok"){ login(); return; }
+  else if(pin.length < 20) pin += k;
+  showDots();
+}
+function prepLogin(){ pin = ""; showDots(); buildPad(); $("lgUser").value = ""; $("loginMsg").textContent = ""; }
+document.addEventListener("keydown", e => {
+  if($("v-adminLogin").classList.contains("hidden")) return;
+  if(document.activeElement === $("lgUser")){ if(e.key==="Enter") $("lgUser").blur(); return; }
+  if(/^[0-9]$/.test(e.key)) pressKey(e.key);
+  else if(e.key==="Backspace") pressKey("del");
+  else if(e.key==="Enter") login();
+});
+async function checkPw(p){
+  const st = load(K.pass, null);
+  return st ? (await sha(st.salt + p)) === st.hash : (await sha("nb-pw:" + p)) === AUTH.p;
 }
 async function login(){
-  const stored = load(K.pass, null), p = $("pw1").value, m = $("loginMsg");
-  if(!stored){
-    if(p.length < 6){ m.textContent = "6 caractères minimum."; return; }
-    if(p !== $("pw2").value){ m.textContent = "Les mots de passe ne correspondent pas."; return; }
-    const salt = uid();
-    save(K.pass, {salt, hash: await sha(salt + p)});
-  } else if(await sha(stored.salt + p) !== stored.hash){
-    m.textContent = "Mot de passe incorrect."; return;
-  }
+  const u = $("lgUser").value.trim().toLowerCase(), m = $("loginMsg");
+  const okU = (await sha("nb-id:" + u)) === AUTH.u;
+  const okP = await checkPw(pin);
+  if(!okU || !okP){ m.textContent = "Identifiant ou mot de passe incorrect."; pin = ""; showDots(); return; }
   sessionStorage.setItem("nb_admin","1");
   go("admin");
 }
 function logout(){ sessionStorage.removeItem("nb_admin"); go("home"); }
 async function changePw(){
   const p = $("npw").value, m = $("pwMsg");
-  if(p.length < 6){ m.className="msg err"; m.textContent="6 caractères minimum."; return; }
+  if(!/^\d{6,}$/.test(p)){ m.className="msg err"; m.textContent="Chiffres uniquement, 6 minimum."; return; }
   const salt = uid(); save(K.pass, {salt, hash: await sha(salt + p)});
   $("npw").value=""; m.className="msg ok"; m.textContent="Mot de passe modifié ✔";
 }
