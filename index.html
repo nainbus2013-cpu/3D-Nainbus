@@ -1097,7 +1097,7 @@ function ticketCanvas(d){ const cv = document.createElement("canvas"); drawTicke
 const canvasBlob = (cv, type, q) => new Promise(r => cv.toBlob(r, type, q));
 /* PDF : une page contenant l'image du ticket (aucune bibliothèque nécessaire) */
 function buildPdf(jpeg, iw, ih){
-  const pw = 164, ph = 425.2, enc = new TextEncoder(), parts = [], offs = []; // hauteur fixe : 15 cm
+  const pw = 164, ph = Math.round(pw * ih / iw * 10) / 10, enc = new TextEncoder(), parts = [], offs = [];
   let len = 0;
   const push = b => { if(typeof b === "string") b = enc.encode(b); parts.push(b); len += b.length; };
   push("%PDF-1.4\n");
@@ -1172,7 +1172,7 @@ function drawTicket(cv, d){
         + 50 + Math.max(d.items.length,1)*rowH + colorCount*26
         + (d.discount > 0 ? 80 : 0) + 80                    // remise + total
         + (d.pay ? 34 : 0) + (d.note ? 34 : 0) + 150;       // paiement, note, pied de ticket
-  // Le contenu est dessiné d’abord, puis ajusté à une hauteur finale fixe de 15 cm.
+  H = Math.max(H, Math.round(W * 2.6));                     // ticket plus long (~15 cm à 58 mm de large)
   cv.width = W*S; cv.height = H*S;
   const x = cv.getContext("2d"); x.scale(S,S);
   x.fillStyle = "#fff"; x.fillRect(0,0,W,H);
@@ -1229,15 +1229,6 @@ function drawTicket(cv, d){
   x.font = "600 18px Inter, Arial, sans-serif"; x.fillStyle="#222";
   x.fillText("À bientôt chez " + SITE_NAME, W/2, y); y += 28;
   x.fillText(SITE_URL, W/2, y);
-
-  // Hauteur finale fixe (~15 cm), largeur inchangée. Le contenu occupe toute la hauteur.
-  const source = document.createElement("canvas");
-  source.width = cv.width; source.height = cv.height;
-  source.getContext("2d").drawImage(cv, 0, 0);
-  const contentHeight = Math.min(source.height, Math.ceil((y + 24) * S));
-  const targetH = Math.round(W * 2.6);
-  cv.width = W * S; cv.height = targetH * S;
-  cv.getContext("2d").drawImage(source, 0, 0, source.width, contentHeight, 0, 0, cv.width, cv.height);
 }
 function ticketClient(t){
   const c = t.clientId ? load(K.clients, []).find(x => x.id === t.clientId) : null;
