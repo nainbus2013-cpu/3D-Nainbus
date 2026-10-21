@@ -378,11 +378,14 @@
           <label for="tNote">Note sur le ticket <span class="opt">* facultatif</span></label>
           <input id="tNote" maxlength="70" oninput="drawCurrent()">
           <div class="total"><span>Total</span><span id="tTotal">0,00 €</span></div>
-          <div class="actions">
-            <button class="primary" onclick="saveTicket('site')">💾 Enregistrer dans le site</button>
-            <button onclick="saveTicket('pdf')">📄 Enregistrer puis préparer les 2 PDF</button>
-            <button onclick="saveTicket('share')">📤 Enregistrer puis partager les 2 tickets</button>
+          <div class="actions" id="ticketActions">
+            <button class="primary" onclick="saveTicket('site')">💾 Enregistrer ce ticket dans le site</button>
+            <button onclick="downloadCurrentClientPdf()">📄 Télécharger le ticket client en PDF</button>
+            <button onclick="shareCurrentClient()">📤 Partager le ticket client</button>
+            <button onclick="downloadCurrentProPdf()">🛠️ Télécharger le Ticket Pro en PDF</button>
+            <button onclick="shareCurrentPro()">🔒 Partager le Ticket Pro</button>
           </div>
+          <p class="sub" style="margin-top:10px">Chaque bouton concerne le ticket affiché. Les actions PDF et partage enregistrent aussi le ticket dans l’historique, sans créer de doublon si tu réutilises le même formulaire.</p>
           <div class="actions" style="margin-top:10px"><button class="small" onclick="resetTicket()">Vider le formulaire</button></div>
         </div>
         <div class="card"><h3 style="margin-bottom:14px">Aperçu du ticket client</h3><canvas id="ticketCanvas"></canvas></div>
@@ -715,6 +718,7 @@ function newTicketNumber(){
 }
 const tdisp = n => typeof n === "number" ? String(n).padStart(4,"0") : String(n);
 let curNum = null;
+let currentSavedDraft = null;
 
 /* Appareil tactile (téléphone, tablette, iPad) → pavé numérique ; PC → clavier */
 const IS_TOUCH = (() => { try{
@@ -1404,7 +1408,7 @@ function drawCurrent(){
   if($("ticketProCanvas")) drawTicketPro($("ticketProCanvas"), d);
 }
 function resetTicket(){
-  items = []; curNum = null; addItemRow();
+  items = []; curNum = null; currentSavedDraft = null; addItemRow();
   $("tClient").value = ""; $("tDisc").value = ""; $("tPay").value = ""; $("tNote").value = "";
   drawCurrent();
 }
@@ -1469,20 +1473,56 @@ async function exportBothTickets(d, mode){
   try{ await exportProChoice(d, next.trim().toLowerCase().startsWith("p") && next.trim().toLowerCase().startsWith("part") ? "share" : "pdf"); }
   catch(e){ toast("Impossible de préparer l'autre document"); }
 }
-function saveTicket(mode){
+function ticketSignature(d){
+  return JSON.stringify({
+    clientId:d.clientId, client:d.client, first:d.first, last:d.last,
+    mail:d.mail, tel:d.tel, items:d.items, discount:d.discount,
+    total:d.total, pay:d.pay, note:d.note, number:d.number
+  });
+}
+function ensureCurrentTicketSaved(){
   const d = currentTicketData();
-  if(!d.items.length){ toast("Ajoutez au moins un objet"); return; }
-  const used = new Set(load(K.tickets, []).map(t => String(t.number)));
-  if(used.has(String(d.number))) d.number = newTicketNumber();
-  d.id = uid(); d.date = Date.now();
-  const list = load(K.tickets, []).slice(); list.push(d); save(K.tickets, list);
-  const done = () => { toast("Ticket n° " + tdisp(d.number) + " enregistré ✔"); resetTicket(); };
-  if(mode === "share" || mode === "pdf"){
-    done();
-    exportBothTickets(d, mode);
-    return;
+  if(!d.items.length){ toast("Ajoutez au moins un objet"); return null; }
+  const signature = ticketSignature(d);
+  if(currentSavedDraft && currentSavedDraft.signature === signature){
+    return currentSavedDraft.ticket;
   }
-  loadFor(1500, 2500, done, "Enregistrement du ticket…");
+  const used = new Set(load(K.tickets, []).map(t => String(t.number)));
+  if(used.has(String(d.number))){
+    d.number = newTicketNumber();
+    curNum = d.number;
+  }
+  d.id = uid();
+  d.date = Date.now();
+  const list = load(K.tickets, []).slice();
+  list.push(d);
+  save(K.tickets, list);
+  currentSavedDraft = {signature:ticketSignature(d), ticket:d};
+  return d;
+}
+function saveTicket(mode){
+  const d = ensureCurrentTicketSaved();
+  if(!d) return;
+  toast("Ticket n° " + tdisp(d.number) + " enregistré dans le site ✔");
+}
+async function downloadCurrentClientPdf(){
+  const d = ensureCurrentTicketSaved(); if(!d) return;
+  const win = openBlankWin();
+  try{ await withLoader("Création du PDF client…", 500, 1200, () => pdfFor(d, win)); }
+  catch(e){ if(win && !win.closed) win.close(); toast("Impossible de créer le PDF client"); }
+}
+async function downloadCurrentProPdf(){
+  const d = ensureCurrentTicketSaved(); if(!d) return;
+  try{ await withLoader("Création du Ticket Pro PDF…", 500, 1200, () => pdfForPro(d, null)); }
+  catch(e){ toast("Impossible de créer le PDF Pro"); }
+}
+async function shareCurrentClient(){
+  const d = ensureCurrentTicketSaved(); if(!d) return;
+  await shareTicket(d);
+}
+async function shareCurrentPro(){
+  const d = ensureCurrentTicketSaved(); if(!d) return;
+  await shareTicketPro(d);
 }
 async function shareTicketPro(d){
   try{
