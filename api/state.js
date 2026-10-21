@@ -4,20 +4,10 @@
 //   SESSION_SECRET                         (une longue phrase au hasard)
 const crypto = require("crypto");
 
-let URL_ = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-let TOKEN_ = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-// Sinon, on déduit l'accès depuis l'adresse de connexion (REDIS_URL, KV_URL, STORAGE_URL...)
-if (!URL_ || !TOKEN_) {
-  const conn = process.env.REDIS_URL || process.env.KV_URL || process.env.STORAGE_URL || process.env.UPSTASH_REDIS_URL;
-  if (conn) {
-    try {
-      const u = new URL(conn);
-      URL_ = "https://" + u.hostname;
-      TOKEN_ = decodeURIComponent(u.password);
-    } catch (e) {}
-  }
-}
-const SECRET = process.env.SESSION_SECRET || ("nb-" + (TOKEN_ || "dev"));
+const REST_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+const REST_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+const CONN = process.env.REDIS_URL || process.env.KV_URL || process.env.STORAGE_URL;
+const SECRET = process.env.SESSION_SECRET || ("nb-" + (REST_TOKEN || CONN || "dev"));
 
 // Identifiant / mot de passe d'origine (mêmes empreintes que dans index.html)
 const AUTH = {
@@ -28,15 +18,27 @@ const ADMIN_KEYS = ["clients", "tickets", "stock", "logo", "reviews", "messages"
 const sha = s => crypto.createHash("sha256").update(s).digest("hex");
 const uid = () => Date.now().toString(36) + crypto.randomBytes(3).toString("hex");
 
+let client = null, connecting = null;
+async function getClient() {
+  if (client && client.isReady) return client;
+  if (!connecting) {
+    const { createClient } = require("redis");
+    const c = createClient({ url: CONN, socket: { connectTimeout: 8000 } });
+    c.on("error", () => {});
+    c.on("end", () => { client = null; connecting = null; });
+    connecting = c.connect().then(() => { client = c; return c; }).catch(e => { connecting = null; throw e; });
+  }
+  return connecting;
+}
 async function redis(...cmd) {
-  const r = await fetch(URL_, {
-    method: "POST",
-    headers: { Authorization: "Bearer " + TOKEN_ },
-    body: JSON.stringify(cmd),
-  });
-  const j = await r.json();
-  if (j.error) throw new Error(j.error);
-  return j.result;
+  if (REST_URL && REST_TOKEN) {
+    const r = await fetch(REST_URL, { method: "POST", headers: { Authorization: "Bearer " + REST_TOKEN }, body: JSON.stringify(cmd) });
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    return j.result;
+  }
+  const c = await getClient();
+  return c.sendCommand(cmd.map(String));
 }
 const getK = async (k, d = null) => { const v = await redis("GET", "nb3:" + k); return v == null ? d : JSON.parse(v); };
 const setK = (k, v) => redis("SET", "nb3:" + k, JSON.stringify(v));
@@ -75,7 +77,7 @@ async function passOk(p) {
 module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   try {
-    if (!URL_ || !TOKEN_) throw bad("Base de données non configurée", 500);
+    if (!(REST_URL && REST_TOKEN) && !CONN) throw bad("Base de données non configurée", 500);
 
     // Lecture publique : avis + logo (jamais les messages)
     if (req.method === "GET") {
@@ -163,6 +165,6 @@ module.exports = async (req, res) => {
     }
     throw bad("Action inconnue");
   } catch (e) {
-    return res.status(e.status || 500).json({ error: e.status ? e.message : "Erreur serveur" });
+    return res.status(e.status || 500).json(e.status ? { error: e.message } : { error: "Erreur serveur", detail: String(e && e.message || e).slice(0, 200) });
   }
 };
