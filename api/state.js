@@ -4,8 +4,19 @@
 //   SESSION_SECRET                         (une longue phrase au hasard)
 const crypto = require("crypto");
 
-const URL_ = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const TOKEN_ = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+let URL_ = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+let TOKEN_ = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+// Sinon, on déduit l'accès depuis l'adresse de connexion (REDIS_URL, KV_URL, STORAGE_URL...)
+if (!URL_ || !TOKEN_) {
+  const conn = process.env.REDIS_URL || process.env.KV_URL || process.env.STORAGE_URL || process.env.UPSTASH_REDIS_URL;
+  if (conn) {
+    try {
+      const u = new URL(conn);
+      URL_ = "https://" + u.hostname;
+      TOKEN_ = decodeURIComponent(u.password);
+    } catch (e) {}
+  }
+}
 const SECRET = process.env.SESSION_SECRET || ("nb-" + (TOKEN_ || "dev"));
 
 // Identifiant / mot de passe d'origine (mêmes empreintes que dans index.html)
