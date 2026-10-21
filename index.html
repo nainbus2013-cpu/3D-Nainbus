@@ -416,6 +416,18 @@
       </div>
     </div>
 
+    <div id="t-bordereau" class="hidden">
+      <div class="card">
+        <h3>Bordereau de colis</h3>
+        <p class="sub">Choisis simplement un client : son prénom s’affichera sur le bordereau.</p>
+        <label for="boClient">Choisir un client</label>
+        <select id="boClient" onchange="fillBordereauClient()"></select>
+        <p id="boName" style="font-size:1.4rem;font-weight:700;margin:16px 0">Prénom du client</p>
+        <div class="actions"><button class="primary" onclick="downloadBordereauPdf()">📦 Imprimer le bordereau (PDF)</button></div>
+        <div class="msg" id="boMsg"></div>
+      </div>
+    </div>
+
     <div id="t-stock" class="hidden">
       <div class="card">
         <h3>Stock de filaments</h3>
@@ -847,10 +859,10 @@ async function changePw(){
 const views = ["home","client","adminLogin","admin","clients","clientForm","clientDetail"];
 const PROTECTED = ["admin","clients","clientForm","clientDetail"];
 const LOCKED = ["reglages"];
-const NAV = [["dash","Accueil"],["ticket","Tickets"],["stock","Stock"],["avis","Avis"],["messages","Messages"],["reglages","Réglages"]];
+const NAV = [["dash","Accueil"],["ticket","Tickets"],["bordereau","Bordereau"],["stock","Stock"],["avis","Avis"],["messages","Messages"],["reglages","Réglages"]];
 const USER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>';
 let curTab = "dash", curView = "home", passLock = false;
-const ADMIN_TABS = ["dash","ticket","stock","avis","messages","reglages"];
+const ADMIN_TABS = ["dash","ticket","bordereau","stock","avis","messages","reglages"];
 
 function go(v){
   if(PROTECTED.includes(v) && !isAdmin()) v = "adminLogin";
@@ -911,11 +923,49 @@ function showTab(t){
   ADMIN_TABS.forEach(x => $("t-"+x).classList.toggle("hidden", x !== t));
   if(t === "dash") renderDash();
   if(t === "ticket"){ renderTicketClients(); if(!items.length) items.push({name:"", price:"", color:""}); renderItems(); renderTicketSub(); }
+  if(t === "bordereau") renderBordereauClients();
   if(t === "stock") renderStock();
   if(t === "avis") renderAdminReviews();
   if(t === "messages") renderMessages();
   if(t === "reglages") renderCA();
   renderTop();
+}
+function renderBordereauClients(){
+  const sel = $("boClient"), current = sel.value;
+  sel.innerHTML = '<option value="">— Choisir un client —</option>' +
+    load(K.clients, []).map(c => `<option value="${esc(c.id)}">${esc(c.first)} ${esc(c.last)}</option>`).join("");
+  sel.value = current;
+  fillBordereauClient();
+}
+function fillBordereauClient(){
+  const c = load(K.clients, []).find(x => x.id === $("boClient").value);
+  $("boName").textContent = c ? (c.first || "") : "Prénom du client";
+}
+async function downloadBordereauPdf(){
+  const c = load(K.clients, []).find(x => x.id === $("boClient").value);
+  const first = c && c.first ? String(c.first).trim() : "";
+  const msg = $("boMsg");
+  if(!first){
+    msg.className = "msg err"; msg.textContent = "Choisis un client dans la liste."; return;
+  }
+  msg.className = "msg"; msg.textContent = "";
+  try{
+    const cv = document.createElement("canvas");
+    cv.width = 1000; cv.height = 700;
+    const x = cv.getContext("2d");
+    x.fillStyle = "#fff"; x.fillRect(0,0,cv.width,cv.height);
+    x.strokeStyle = "#222"; x.lineWidth = 5; x.strokeRect(28,28,cv.width-56,cv.height-56);
+    x.textAlign = "center"; x.fillStyle = "#111";
+    if(logoImg.complete && logoImg.naturalWidth > 0){
+      const maxW = 520, maxH = 300, ratio = Math.min(maxW/logoImg.naturalWidth, maxH/logoImg.naturalHeight);
+      const w = logoImg.naturalWidth*ratio, h = logoImg.naturalHeight*ratio;
+      x.drawImage(logoImg,(cv.width-w)/2,75,w,h);
+    } else { x.font = "bold 64px Arial"; x.fillText(SITE_NAME,cv.width/2,180); }
+    x.font = "bold 62px Arial"; x.fillText(first,cv.width/2,500);
+    const blob = await makePdf(cv);
+    showPdf(blob,"bordereau-3D-Nainbus.pdf",null);
+    msg.className = "msg ok"; msg.textContent = "Bordereau PDF téléchargé ✔";
+  }catch(e){ msg.className = "msg err"; msg.textContent = "Impossible de créer le PDF."; }
 }
 function renderCA(){
   const all = load(K.tickets, []), now = new Date(), ym = now.getFullYear() + "-" + now.getMonth();
