@@ -313,20 +313,6 @@
         <div class="card"><h3 style="margin-bottom:14px">Aperçu</h3><canvas id="ticketCanvas"></canvas></div>
       </div>
 
-      <div id="tk-create-pro" class="grid2" style="margin-top:22px">
-        <div class="card">
-          <h3>Ticket pro <span class="tag warn">pour moi</span></h3>
-          <p class="sub">Rempli automatiquement avec les infos du ticket client. Il est enregistré en même temps que lui.</p>
-          <div class="infogrid" id="proInfo"></div>
-          <div class="actions">
-            <button class="primary" onclick="saveTicket('site','pro')">💾 Enregistrer dans le site</button>
-            <button onclick="saveTicket('pdf','pro')">📄 Enregistrer et télécharger (PDF)</button>
-            <button onclick="saveTicket('share','pro')">📤 Enregistrer et partager</button>
-          </div>
-        </div>
-        <div class="card"><h3 style="margin-bottom:14px">Aperçu ticket pro</h3><canvas id="proCanvas"></canvas></div>
-      </div>
-
       <div id="tk-search" class="card hidden">
         <h3>Chercher un ticket</h3>
         <div id="hSearchBox" class="searchrow">
@@ -826,7 +812,6 @@ function setTicketSub(sb){
 function renderTicketSub(){
   document.querySelectorAll("#ticketTabs button").forEach(b => b.classList.toggle("active", b.dataset.ts === ticketSub));
   $("tk-create").classList.toggle("hidden", ticketSub !== "create");
-  $("tk-create-pro").classList.toggle("hidden", ticketSub !== "create");
   $("tk-search").classList.toggle("hidden", ticketSub !== "search");
   if(ticketSub === "search"){ $("hSearch").value = hist.q || ""; $("hField").value = hist.field || "all"; renderHistory(); }
   else drawCurrent();
@@ -1324,7 +1309,6 @@ function currentTicketData(){
   if(!curNum) curNum = newTicketNumber();
   return {clientId: c ? c.id : "", client: c ? c.first + " " + c.last : "",
     first: c ? c.first : "", last: c ? c.last : "", mail: c ? c.mail || "" : "", tel: c ? c.tel || "" : "",
-    addr: c ? [c.addr, [c.zip, c.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") : "",
     items: its, discount: disc,
     total: Math.max(0, sub - disc), pay: $("tPay").value, note: $("tNote").value.trim(),
     number: curNum, date: Date.now()};
@@ -1334,15 +1318,13 @@ function drawCurrent(){
   const d = currentTicketData();
   $("tTotal").textContent = money(d.total);
   drawTicket($("ticketCanvas"), d);
-  drawProTicket($("proCanvas"), d);
-  $("proInfo").innerHTML = proInfoHtml(d);
 }
 function resetTicket(){
   items = []; curNum = null; addItemRow();
   $("tClient").value = ""; $("tDisc").value = ""; $("tPay").value = ""; $("tNote").value = "";
   drawCurrent();
 }
-function ticketCanvas(d, pro){ const cv = document.createElement("canvas"); (pro ? drawProTicket : drawTicket)(cv, d); return cv; }
+function ticketCanvas(d){ const cv = document.createElement("canvas"); drawTicket(cv, d); return cv; }
 const canvasBlob = (cv, type, q) => new Promise(r => cv.toBlob(r, type, q));
 function buildPdf(jpeg, iw, ih){
   const pw = 164, ph = Math.round(pw * ih / iw * 10) / 10, enc = new TextEncoder(), parts = [], offs = [];
@@ -1371,22 +1353,21 @@ function showPdf(blob, name, win){
   else { const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
   setTimeout(() => URL.revokeObjectURL(url), 120000);
 }
-async function pdfFor(d, win, pro){ showPdf(await makePdf(ticketCanvas(d, pro)), "ticket-" + (pro ? "PRO-" : "3D-Nainbus-") + tdisp(d.number) + ".pdf", win); }
+async function pdfFor(d, win){ showPdf(await makePdf(ticketCanvas(d)), "ticket-3D-Nainbus-" + tdisp(d.number) + ".pdf", win); }
 function openBlankWin(){
   let w = null;
   try{ w = window.open("", "_blank"); if(w) w.document.write("<p style='font-family:sans-serif;padding:20px'>Création du PDF…</p>"); }catch(e){}
   return w;
 }
-async function shareTicket(d, pro){
+async function shareTicket(d){
   try{
-    const blob = await canvasBlob(ticketCanvas(d, pro), "image/png");
-    const file = new File([blob], "ticket-" + (pro ? "PRO-" : "3D-Nainbus-") + tdisp(d.number) + ".png", {type:"image/png"});
-    if(navigator.canShare && navigator.canShare({files:[file]})) await navigator.share({files:[file], title:"Ticket " + (pro ? "pro " : "") + tdisp(d.number)});
-    else { downloadCanvas(ticketCanvas(d, pro), file.name); toast("Partage indisponible ici : l'image a été téléchargée."); }
+    const blob = await canvasBlob(ticketCanvas(d), "image/png");
+    const file = new File([blob], "ticket-3D-Nainbus-" + tdisp(d.number) + ".png", {type:"image/png"});
+    if(navigator.canShare && navigator.canShare({files:[file]})) await navigator.share({files:[file], title:"Ticket " + tdisp(d.number)});
+    else { downloadCanvas(ticketCanvas(d), file.name); toast("Partage indisponible ici : l'image a été téléchargée."); }
   }catch(e){ if(!e || e.name !== "AbortError") toast("Partage impossible sur cet appareil"); }
 }
-function saveTicket(mode, which){
-  const pro = which === "pro";
+function saveTicket(mode){
   const d = currentTicketData();
   if(!d.items.length){ toast("Ajoutez au moins un objet"); return; }
   const win = mode === "pdf" ? openBlankWin() : null;
@@ -1395,9 +1376,9 @@ function saveTicket(mode, which){
   d.id = uid(); d.date = Date.now();
   const list = load(K.tickets, []).slice(); list.push(d); save(K.tickets, list);
   const done = () => { toast("Ticket n° " + tdisp(d.number) + " enregistré ✔"); resetTicket(); };
-  if(mode === "share"){ shareTicket(d, pro); done(); return; }
+  if(mode === "share"){ shareTicket(d); done(); return; }
   if(mode === "pdf"){
-    withLoader("Création du PDF…", 1500, 2500, () => pdfFor(d, win, pro)).then(r => { if(r === "fail") toast("Impossible de créer le PDF"); done(); });
+    withLoader("Création du PDF…", 1500, 2500, () => pdfFor(d, win)).then(r => { if(r === "fail") toast("Impossible de créer le PDF"); done(); });
     return;
   }
   loadFor(1500, 2500, done, "Enregistrement du ticket…");
@@ -1484,71 +1465,6 @@ function drawTicket(cv, d){
   x.fillText(SITE_URL, W/2, y);
 }
 
-function proExtra(t){
-  const c = t.clientId ? load(K.clients, []).find(x => x.id === t.clientId) : null;
-  const addr = c ? [c.addr, [c.zip, c.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") : (t.addr || "");
-  const k = ticketClient(t);
-  return {name: t.client || "", mail: k.mail, tel: k.tel, addr};
-}
-function proInfoHtml(d){
-  const p = proExtra(d), sub = d.items.reduce((a,i) => a + num(i.price), 0);
-  const cell = (l,v) => v ? `<div><small>${l}</small>${esc(v)}</div>` : "";
-  return cell("Ticket n°", tdisp(d.number)) + cell("Client", p.name || "Sans nom") + cell("E-mail", p.mail) + cell("Téléphone", p.tel)
-    + cell("Adresse", p.addr) + cell("Objets", d.items.map(i => (i.name || "Objet") + (i.color ? " (" + i.color + ")" : "")).join(", "))
-    + cell("Sous-total", money(sub)) + cell("Remise", d.discount > 0 ? money(d.discount) : "") + cell("Paiement", d.pay)
-    + cell("Total", money(d.total)) + cell("Note", d.note);
-}
-function drawProTicket(cv, d){
-  if(!cv) return;
-  const W = 380, S = 3, F = "Inter, Arial, sans-serif", p = proExtra(d), R = [];
-  const sub = d.items.reduce((a,i) => a + num(i.price), 0);
-  const T = (t, f, h, o) => R.push({t, f, h, ...o});
-  const LINE = () => R.push({line:true, h:26});
-  T("TICKET PRO", "800 30px " + F, 44, {c:true});
-  T(SITE_NAME + " · copie gérant", "600 15px " + F, 30, {c:true, col:"#555"});
-  LINE();
-  T("Date : " + fdate(d.date), "600 18px " + F, 30);
-  T("Ticket n° " + tdisp(d.number), "600 18px " + F, 30);
-  T("Client : " + (p.name || "—"), "700 18px " + F, 30);
-  if(p.mail) T("E-mail : " + p.mail, "500 16px " + F, 26);
-  if(p.tel) T("Tél : " + p.tel, "500 16px " + F, 26);
-  if(p.addr) T("Adresse : " + p.addr, "500 16px " + F, 26);
-  LINE();
-  T("OBJET", "700 15px " + F, 28, {r:"PRIX", col:"#333"});
-  if(!d.items.length) T("—", "600 19px " + F, 34, {col:"#999"});
-  d.items.forEach(it => {
-    T(it.name.trim() || "Objet", "600 19px " + F, 34, {r:money(num(it.price))});
-    if(it.color) T("Couleur : " + it.color, "500 15px " + F, 24, {col:"#333"});
-  });
-  LINE();
-  if(d.discount > 0){
-    T("Sous-total", "600 18px " + F, 30, {r:money(sub)});
-    T("Remise", "600 18px " + F, 30, {r:"- " + money(d.discount)});
-  }
-  T("TOTAL", "800 28px " + F, 46, {r:money(d.total)});
-  if(d.pay) T("Paiement : " + d.pay, "600 17px " + F, 30);
-  if(d.note) T("Note : " + d.note, "600 17px " + F, 30);
-  const H = Math.ceil(R.reduce((a,r) => a + r.h, 0) + 40);
-  cv.width = W*S; cv.height = H*S;
-  const x = cv.getContext("2d"); x.scale(S,S);
-  x.fillStyle = "#fff"; x.fillRect(0,0,W,H);
-  let y = 20;
-  R.forEach(r => {
-    if(r.line){
-      x.strokeStyle = "#000"; x.lineWidth = 1.5; x.setLineDash([7,5]);
-      x.beginPath(); x.moveTo(16, y + r.h/2); x.lineTo(W-16, y + r.h/2); x.stroke(); x.setLineDash([]);
-    } else {
-      x.font = r.f; x.fillStyle = r.col || "#000";
-      const base = y + r.h - 8, maxW = r.r ? W - 150 : W - 32;
-      let t = r.t; while(x.measureText(t).width > maxW && t.length > 1) t = t.slice(0,-1);
-      if(t !== r.t) t += "…";
-      x.textAlign = r.c ? "center" : "left"; x.fillText(t, r.c ? W/2 : 16, base);
-      if(r.r){ x.textAlign = "right"; x.fillText(r.r, W-16, base); }
-    }
-    y += r.h;
-  });
-}
-
 /* ============ Recherche de tickets ============ */
 function searchNorm(value){
   return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("fr-FR").replace(/\s+/g, " ").trim();
@@ -1614,26 +1530,20 @@ function renderTicketDetail(t){
       <div class="total"><span>Total</span><span>${money(t.total)}</span></div>
       <div class="actions"><button class="primary" onclick="downloadStored('${t.id}')">📄 Télécharger (PDF)</button>
       <button onclick="shareStored('${t.id}')">📤 Partager</button>
-      <button class="danger" onclick="deleteTicket('${t.id}')">🗑 Supprimer</button></div></div></div>
-    <h3 style="margin-top:26px">Ticket pro</h3>
-    <div class="grid2"><canvas id="histProCanvas"></canvas>
-    <div class="actions" style="align-content:start">
-      <button class="primary" onclick="downloadStored('${t.id}',true)">📄 Télécharger le ticket pro (PDF)</button>
-      <button onclick="shareStored('${t.id}',true)">📤 Partager le ticket pro</button></div></div>`;
+      <button class="danger" onclick="deleteTicket('${t.id}')">🗑 Supprimer</button></div></div></div>`;
   drawHist();
 }
 function drawHist(){
   const t = load(K.tickets, []).find(x => x.id === hist.open);
   if(t && $("histCanvas")) drawTicket($("histCanvas"), t);
-  if(t && $("histProCanvas")) drawProTicket($("histProCanvas"), t);
 }
-function downloadStored(id, pro){
+function downloadStored(id){
   const t = load(K.tickets, []).find(x => x.id === id); if(!t) return;
   const win = openBlankWin();
-  withLoader("Création du PDF…", 800, 1400, () => pdfFor(t, win, pro)).then(r => { if(r === "fail") toast("Impossible de créer le PDF"); });
+  withLoader("Création du PDF…", 800, 1400, () => pdfFor(t, win)).then(r => { if(r === "fail") toast("Impossible de créer le PDF"); });
 }
-function shareStored(id, pro){
-  const t = load(K.tickets, []).find(x => x.id === id); if(t) shareTicket(t, pro);
+function shareStored(id){
+  const t = load(K.tickets, []).find(x => x.id === id); if(t) shareTicket(t);
 }
 function deleteTicket(id){
   sure("Supprimer ce ticket de l'historique ?", () => askCode(() => loadFor(1200, 2000, () => {
