@@ -1,5 +1,4 @@
-```javascript
-// api/state.js — sauvegarde en ligne pour 3D Nainbus
+// api/state.js — sauvegarde en ligne pour 3D Nainbus (Vercel + Upstash Redis)
 // Variables Vercel : KV_REST_API_URL + KV_REST_API_TOKEN
 // ou UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
 // ou REDIS_URL / KV_URL / STORAGE_URL ; SESSION_SECRET recommandé.
@@ -174,7 +173,9 @@ async function limit(req, name, max, secs, msg) {
     req.headers["x-forwarded-for"] || "x"
   ).split(",")[0].trim();
 
+  // Correction : pas d'accents graves dans cette instruction.
   const k = "nb3:rl:" + name + ":" + ip;
+
   const n = Number(await redis("INCR", k));
 
   if (n === 1) {
@@ -574,4 +575,3 @@ module.exports = async (req, res) => {
     );
   }
 };
-```
