@@ -1,7 +1,5 @@
-// api/state.js — sauvegarde en ligne pour 3D Nainbus (Vercel + Upstash Redis)
-// Variables Vercel : KV_REST_API_URL + KV_REST_API_TOKEN
-// ou UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
-// ou REDIS_URL / KV_URL / STORAGE_URL ; SESSION_SECRET recommandé.
+// api/state.js — 3D Nainbus
+// Stockage partagé via Vercel et Upstash Redis.
 
 const crypto = require("crypto");
 
@@ -24,7 +22,7 @@ const SECRET =
 
 const AUTH = {
   u: "6aeadee6393f09bcc86fc51cd989c5399e90b69a830de1c9fde4cc292f9467f5",
-  p: "d15aa519613b2ba812c6be6091d4fe70e9dd37768dca1323603b15778f1162a3"
+  p: "d15aa519613b2ba812c6be6091d4fe70e9dd37768dca1323603b15778f1162a3",
 };
 
 const ADMIN_KEYS = [
@@ -33,7 +31,8 @@ const ADMIN_KEYS = [
   "stock",
   "logo",
   "reviews",
-  "messages"
+  "messages",
+  "requests"
 ];
 
 const sha = s =>
@@ -133,10 +132,7 @@ function checkToken(req) {
   const h = req.headers.authorization || "";
   const t = h.startsWith("Bearer ") ? h.slice(7) : "";
 
-  const parts = t.split(".");
-  const p = parts[0];
-  const sig = parts[1];
-
+  const [p, sig] = t.split(".");
   if (!p || !sig) return null;
 
   const good = crypto
@@ -173,9 +169,7 @@ async function limit(req, name, max, secs, msg) {
     req.headers["x-forwarded-for"] || "x"
   ).split(",")[0].trim();
 
-  // Correction : pas d'accents graves dans cette instruction.
   const k = "nb3:rl:" + name + ":" + ip;
-
   const n = Number(await redis("INCR", k));
 
   if (n === 1) {
@@ -287,7 +281,11 @@ module.exports = async (req, res) => {
       const text = clean(b.text, 600);
       const rating = Math.round(Number(b.rating));
 
-      if (!name || text.length < 5 || !(rating >= 1 && rating <= 5)) {
+      if (
+        !name ||
+        text.length < 5 ||
+        !(rating >= 1 && rating <= 5)
+      ) {
         throw bad("Avis invalide.");
       }
 
@@ -351,7 +349,10 @@ module.exports = async (req, res) => {
 
     // Lecture publique des réponses aux messages
     if (a === "replies") {
-      const ids = Array.isArray(b.ids) ? b.ids.slice(0, 30) : [];
+      const ids = Array.isArray(b.ids)
+        ? b.ids.slice(0, 30)
+        : [];
+
       const l = (await getK("messages", [])) || [];
       const out = {};
 
@@ -364,6 +365,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ replies: out });
     }
 
+    // Vérification de la session
     const session = checkToken(req);
 
     if (!session) {
@@ -377,7 +379,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // L'assistant peut uniquement consulter le stock
+    // L'assistant peut consulter le stock, sans accéder aux clients.
     if (a === "assistantData") {
       if (session.role !== "assistant") {
         throw bad(
@@ -391,21 +393,151 @@ module.exports = async (req, res) => {
       });
     }
 
+    // Création d'une demande par l'assistant
+    if (a === "createRequest") {
+      if (
+        session.role !== "assistant" &&
+        session.role !== "admin"
+      ) {
+        throw bad("Accès refusé", 403);
+      }
+
+      const first = clean(b.first, 50);
+      const last = clean(b.last, 60);
+      const object = clean(b.object, 100);
+      const color = clean(b.color, 40);
+      const comment = clean(b.comment, 500);
+
+      if (!first || !last || !object || !color) {
+        throw bad(
+          "Prénom, nom, objet et couleur sont obligatoires."
+        );
+      }
+
+      const stock = (await getK("stock", [])) || [];
+
+      if (!stock.some(c => c.name === color && c.inStock)) {
+        throw bad(
+          "Cette couleur n’est plus disponible dans le stock.",
+          409
+        );
+      }
+
+      const requests = (await getK("requests", [])) || [];
+
+      const request = {
+        id: uid(),
+        first,
+        last,
+        object,
+        color,
+        comment,
+        by: session.user || "assistant",
+        byUid: session.uid || session.user || "assistant",
+        date: Date.now(),
+        status: "pending",
+        ticketPrepared: false
+      };
+
+      requests.push(request);
+      await setK("requests", requests);
+
+      return res.status(200).json({
+        ok: true,
+        id: request.id
+      });
+    }
+
+    // L'assistant voit uniquement ses propres demandes
+    if (a === "myRequests") {
+      const requests = (await getK("requests", [])) || [];
+
+      return res.status(200).json({
+        requests: requests.filter(
+          r =>
+            r.byUid === (session.uid || session.user || "assistant") ||
+            r.by === (session.user || "assistant")
+        )
+      });
+    }
+
+    // Toutes les actions suivantes sont réservées au gérant.
     requireAdmin(session);
 
+    // Liste des demandes pour le gérant
+    if (a === "listRequests") {
+      return res.status(200).json({
+        requests: (await getK("requests", [])) || []
+      });
+    }
+
+    // Consultation d'une demande
+    if (a === "getRequest") {
+      const requests = (await getK("requests", [])) || [];
+      const request = requests.find(x => x.id === b.id);
+
+      if (!request) {
+        throw bad("Demande introuvable", 404);
+      }
+
+      return res.status(200).json({ request });
+    }
+
+    // Accepter ou refuser une demande
+    if (a === "decideRequest") {
+      if (!["accepted", "rejected"].includes(b.status)) {
+        throw bad("Décision invalide");
+      }
+
+      const requests = (await getK("requests", [])) || [];
+      const request = requests.find(x => x.id === b.id);
+
+      if (!request) {
+        throw bad("Demande introuvable", 404);
+      }
+
+      if (request.status !== "pending") {
+        throw bad("Cette demande a déjà été traitée", 409);
+      }
+
+      if (b.status === "accepted") {
+        const stock = (await getK("stock", [])) || [];
+
+        if (!stock.some(c => c.name === request.color && c.inStock)) {
+          throw bad(
+            "Cette couleur n’est plus disponible dans le stock",
+            409
+          );
+        }
+      }
+
+      request.status = b.status;
+      request.decidedAt = Date.now();
+      request.decidedBy = session.user || "gerant";
+
+      await setK("requests", requests);
+
+      return res.status(200).json({
+        ok: true,
+        request
+      });
+    }
+
+    // Vérification du mot de passe
     if (a === "verify") {
       return res.status(200).json({
         ok: await passOk(String(b.pass || ""))
       });
     }
 
+    // Chargement des données de l'espace gérant
     if (a === "all") {
       const out = {};
 
       for (const k of ADMIN_KEYS) {
         out[k] = await getK(
           k,
-          ["clients", "tickets", "reviews", "messages"].includes(k)
+          ["clients", "tickets", "reviews", "messages", "requests"].includes(k)
             ? []
             : null
         );
@@ -414,6 +546,7 @@ module.exports = async (req, res) => {
       return res.status(200).json(out);
     }
 
+    // Enregistrement des données
     if (a === "set") {
       if (!ADMIN_KEYS.includes(b.key)) {
         throw bad("Clé inconnue");
@@ -424,6 +557,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // Changement du mot de passe
     if (a === "changePass") {
       const p = String(b.pass || "");
 
@@ -441,7 +575,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // Gestion des comptes
+    // Liste des comptes
     if (a === "usersList") {
       const users = (await getK("users", [])) || [];
 
@@ -454,6 +588,7 @@ module.exports = async (req, res) => {
       });
     }
 
+    // Création d'un compte
     if (a === "usersCreate") {
       const user = clean(b.user, 40).toLowerCase();
       const pass = String(b.pass || "");
@@ -500,6 +635,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // Suppression d'un compte
     if (a === "usersDelete") {
       const users = (await getK("users", [])) || [];
       const target = users.find(x => x.id === b.id);
@@ -522,6 +658,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // Suppression d'un avis
     if (a === "delReview") {
       const l = ((await getK("reviews", [])) || [])
         .filter(r => r.id !== b.id);
@@ -531,6 +668,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ reviews: l });
     }
 
+    // Gestion des messages
     if (["markRead", "delMessage", "reply"].includes(a)) {
       let l = (await getK("messages", [])) || [];
 
