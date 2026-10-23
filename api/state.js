@@ -1,5 +1,5 @@
 // api/state.js — 3D Nainbus
-// Stockage partagé via Vercel et Upstash Redis.
+// Stockage Vercel + Upstash Redis
 
 const crypto = require("crypto");
 
@@ -220,7 +220,7 @@ module.exports = async (req, res) => {
 
     const a = b.action;
 
-    // Connexion
+    // CONNEXION
     if (a === "login") {
       await limit(
         req,
@@ -267,7 +267,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Envoi public d'un avis
+    // ENVOI PUBLIC D'UN AVIS
     if (a === "review") {
       await limit(
         req,
@@ -281,11 +281,7 @@ module.exports = async (req, res) => {
       const text = clean(b.text, 600);
       const rating = Math.round(Number(b.rating));
 
-      if (
-        !name ||
-        text.length < 5 ||
-        !(rating >= 1 && rating <= 5)
-      ) {
+      if (!name || text.length < 5 || !(rating >= 1 && rating <= 5)) {
         throw bad("Avis invalide.");
       }
 
@@ -306,7 +302,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Envoi public d'un message
+    // ENVOI PUBLIC D'UN MESSAGE
     if (a === "message") {
       await limit(
         req,
@@ -347,12 +343,9 @@ module.exports = async (req, res) => {
       return res.status(200).json({ id: m.id });
     }
 
-    // Lecture publique des réponses aux messages
+    // LECTURE PUBLIQUE DES RÉPONSES AUX MESSAGES
     if (a === "replies") {
-      const ids = Array.isArray(b.ids)
-        ? b.ids.slice(0, 30)
-        : [];
-
+      const ids = Array.isArray(b.ids) ? b.ids.slice(0, 30) : [];
       const l = (await getK("messages", [])) || [];
       const out = {};
 
@@ -365,7 +358,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ replies: out });
     }
 
-    // Vérification de la session
+    // VÉRIFICATION DE LA SESSION
     const session = checkToken(req);
 
     if (!session) {
@@ -379,7 +372,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // L'assistant peut consulter le stock, sans accéder aux clients.
+    // L'ASSISTANT PEUT CONSULTER LE STOCK
     if (a === "assistantData") {
       if (session.role !== "assistant") {
         throw bad(
@@ -393,12 +386,9 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Création d'une demande par l'assistant
+    // CRÉER UNE DEMANDE
     if (a === "createRequest") {
-      if (
-        session.role !== "assistant" &&
-        session.role !== "admin"
-      ) {
+      if (!["assistant", "admin"].includes(session.role)) {
         throw bad("Accès refusé", 403);
       }
 
@@ -448,7 +438,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // L'assistant voit uniquement ses propres demandes
+    // L'ASSISTANT CONSULTE SES PROPRES DEMANDES
     if (a === "myRequests") {
       const requests = (await getK("requests", [])) || [];
 
@@ -461,17 +451,17 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Toutes les actions suivantes sont réservées au gérant.
+    // À PARTIR D'ICI, ACTIONS RÉSERVÉES AU GÉRANT
     requireAdmin(session);
 
-    // Liste des demandes pour le gérant
+    // LISTE DES DEMANDES
     if (a === "listRequests") {
       return res.status(200).json({
         requests: (await getK("requests", [])) || []
       });
     }
 
-    // Consultation d'une demande
+    // CONSULTER UNE DEMANDE
     if (a === "getRequest") {
       const requests = (await getK("requests", [])) || [];
       const request = requests.find(x => x.id === b.id);
@@ -483,7 +473,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ request });
     }
 
-    // Accepter ou refuser une demande
+    // ACCEPTER OU REFUSER UNE DEMANDE
     if (a === "decideRequest") {
       if (!["accepted", "rejected"].includes(b.status)) {
         throw bad("Décision invalide");
@@ -500,18 +490,25 @@ module.exports = async (req, res) => {
         throw bad("Cette demande a déjà été traitée", 409);
       }
 
+      const reason = clean(b.reason, 500);
+
+      if (b.status === "rejected" && !reason) {
+        throw bad("Indiquez pourquoi vous refusez cette demande.");
+      }
+
       if (b.status === "accepted") {
         const stock = (await getK("stock", [])) || [];
 
         if (!stock.some(c => c.name === request.color && c.inStock)) {
           throw bad(
-            "Cette couleur n’est plus disponible dans le stock",
+            "Cette couleur n’est plus disponible dans le stock.",
             409
           );
         }
       }
 
       request.status = b.status;
+      request.reason = b.status === "rejected" ? reason : "";
       request.decidedAt = Date.now();
       request.decidedBy = session.user || "gerant";
 
@@ -523,14 +520,75 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Vérification du mot de passe
+    // MARQUER UNE DEMANDE COMME TERMINÉE APRÈS L'ENREGISTREMENT DU TICKET
+    if (a === "completeRequest") {
+      const requests = (await getK("requests", [])) || [];
+      const request = requests.find(x => x.id === b.id);
+
+      if (!request) {
+        throw bad("Demande introuvable", 404);
+      }
+
+      if (request.status !== "accepted") {
+        throw bad("Cette demande n'est pas acceptée", 409);
+      }
+
+      request.status = "completed";
+      request.ticketPrepared = true;
+      request.ticketId = clean(b.ticketId, 100);
+      request.completedAt = Date.now();
+
+      await setK("requests", requests);
+
+      return res.status(200).json({
+        ok: true,
+        request
+      });
+    }
+
+    // RETIRER UNE DEMANDE AVEC MOTIF OBLIGATOIRE
+    if (a === "deleteRequest") {
+      const reason = clean(b.reason, 500);
+
+      if (!reason) {
+        throw bad("Indiquez pourquoi vous supprimez cette demande.");
+      }
+
+      const requests = (await getK("requests", [])) || [];
+      const request = requests.find(x => x.id === b.id);
+
+      if (!request) {
+        throw bad("Demande introuvable", 404);
+      }
+
+      if (["completed", "deleted"].includes(request.status)) {
+        throw bad(
+          "Cette demande est déjà terminée ou retirée",
+          409
+        );
+      }
+
+      request.status = "deleted";
+      request.reason = reason;
+      request.deletedAt = Date.now();
+      request.deletedBy = session.user || "gerant";
+
+      await setK("requests", requests);
+
+      return res.status(200).json({
+        ok: true,
+        request
+      });
+    }
+
+    // VÉRIFICATION DU MOT DE PASSE
     if (a === "verify") {
       return res.status(200).json({
         ok: await passOk(String(b.pass || ""))
       });
     }
 
-    // Chargement des données de l'espace gérant
+    // CHARGEMENT DES DONNÉES DU GÉRANT
     if (a === "all") {
       const out = {};
 
@@ -546,7 +604,7 @@ module.exports = async (req, res) => {
       return res.status(200).json(out);
     }
 
-    // Enregistrement des données
+    // ENREGISTREMENT DES DONNÉES
     if (a === "set") {
       if (!ADMIN_KEYS.includes(b.key)) {
         throw bad("Clé inconnue");
@@ -557,7 +615,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // Changement du mot de passe
+    // CHANGEMENT DU MOT DE PASSE
     if (a === "changePass") {
       const p = String(b.pass || "");
 
@@ -575,7 +633,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // Liste des comptes
+    // LISTE DES COMPTES
     if (a === "usersList") {
       const users = (await getK("users", [])) || [];
 
@@ -588,7 +646,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Création d'un compte
+    // CRÉER UN COMPTE
     if (a === "usersCreate") {
       const user = clean(b.user, 40).toLowerCase();
       const pass = String(b.pass || "");
@@ -635,7 +693,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // Suppression d'un compte
+    // SUPPRIMER UN COMPTE
     if (a === "usersDelete") {
       const users = (await getK("users", [])) || [];
       const target = users.find(x => x.id === b.id);
@@ -658,7 +716,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // Suppression d'un avis
+    // SUPPRIMER UN AVIS
     if (a === "delReview") {
       const l = ((await getK("reviews", [])) || [])
         .filter(r => r.id !== b.id);
@@ -668,7 +726,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ reviews: l });
     }
 
-    // Gestion des messages
+    // GESTION DES MESSAGES
     if (["markRead", "delMessage", "reply"].includes(a)) {
       let l = (await getK("messages", [])) || [];
 
