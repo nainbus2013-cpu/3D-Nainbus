@@ -1,5 +1,5 @@
 ```javascript
-// api/state.js — sauvegarde en ligne pour 3D Nainbus (Vercel + Upstash Redis)
+// api/state.js — sauvegarde en ligne pour 3D Nainbus
 // Variables Vercel : KV_REST_API_URL + KV_REST_API_TOKEN
 // ou UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
 // ou REDIS_URL / KV_URL / STORAGE_URL ; SESSION_SECRET recommandé.
@@ -25,7 +25,7 @@ const SECRET =
 
 const AUTH = {
   u: "6aeadee6393f09bcc86fc51cd989c5399e90b69a830de1c9fde4cc292f9467f5",
-  p: "d15aa519613b2ba812c6be6091d4fe70e9dd37768dca1323603b15778f1162a3",
+  p: "d15aa519613b2ba812c6be6091d4fe70e9dd37768dca1323603b15778f1162a3"
 };
 
 const ADMIN_KEYS = [
@@ -134,7 +134,10 @@ function checkToken(req) {
   const h = req.headers.authorization || "";
   const t = h.startsWith("Bearer ") ? h.slice(7) : "";
 
-  const [p, sig] = t.split(".");
+  const parts = t.split(".");
+  const p = parts[0];
+  const sig = parts[1];
+
   if (!p || !sig) return null;
 
   const good = crypto
@@ -171,7 +174,7 @@ async function limit(req, name, max, secs, msg) {
     req.headers["x-forwarded-for"] || "x"
   ).split(",")[0].trim();
 
-  const k = `nb3:rl:${name}:${ip}`;
+  const k = "nb3:rl:" + name + ":" + ip;
   const n = Number(await redis("INCR", k));
 
   if (n === 1) {
