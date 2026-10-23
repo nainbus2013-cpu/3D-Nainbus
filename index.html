@@ -278,6 +278,88 @@ canvas{border-radius:12px;box-shadow:0 2px 8px rgba(23,63,85,.07)}
 @media(max-width:760px){.wrap{padding:16px 12px 32px}.card,.tile{padding:16px}.hero{border-radius:18px;padding:26px 16px}.mode-shell{border-radius:16px}}
 </style>
 
+
+<style id="nainbus-mobile-polish">
+/* Améliorations mobile : navigation, formulaires, cartes et boutons */
+html{ -webkit-text-size-adjust:100%; }
+body{ overflow-x:hidden; }
+img,canvas,svg{ max-width:100%; }
+button,.btn,input,select,textarea{ max-width:100%; }
+@media (max-width:760px){
+  header.top{
+    position:sticky; top:0; min-height:0; padding:10px 12px 8px;
+    display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 10px;
+    align-items:center;
+  }
+  .brand{display:block!important;font-size:18px;line-height:1.2;grid-column:1;grid-row:1}
+  #clock{display:none!important}
+  #topActions{grid-column:2;grid-row:1;display:flex;align-items:center;justify-content:flex-end;gap:6px;margin:0;min-width:0}
+  #topActions button{min-height:40px;padding:8px 10px;font-size:12px;white-space:nowrap}
+  #topActions .clientbtn{width:40px;height:40px;padding:0;justify-content:center}
+  #topActions .clientbtn span{display:none}
+  #topNav{grid-column:1/-1;grid-row:2;width:100%;max-width:100%;display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;padding:2px 0 5px;margin:0;scrollbar-width:none}
+  #topNav button{flex:0 0 auto;min-height:40px;padding:9px 13px;font-size:13px}
+  .wrap{width:100%;max-width:100%;padding:14px 12px 30px}
+  .pagehead{align-items:flex-start;margin-bottom:14px;gap:8px}
+  .pagehead h2{font-size:23px;min-width:0}
+  .hero{margin-top:0;padding:27px 15px 22px;border-radius:16px}
+  .hero h2{font-size:clamp(25px,7vw,32px);line-height:1.2;overflow-wrap:anywhere}
+  .hero p{font-size:15px}
+  .hero p.note{text-align:left;font-size:13px;margin-top:20px;padding:12px}
+  .btns{display:grid;grid-template-columns:1fr;gap:10px;margin-top:22px}
+  .btns button{width:100%;min-height:48px;line-height:1.35}
+  .card,.tile{padding:15px;border-radius:14px;min-width:0}
+  .narrow,.narrow2{width:100%;max-width:100%;margin:14px auto}
+  .row,.row3,.grid2,.searchrow{grid-template-columns:minmax(0,1fr);gap:12px}
+  .tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:15px}
+  .tabs button{width:100%;min-width:0;min-height:44px;padding:9px 7px;font-size:12px;line-height:1.25;white-space:normal}
+  .item{align-items:flex-start;gap:9px;padding:12px;min-width:0}
+  .item > *{min-width:0}
+  .item small,.item b{overflow-wrap:anywhere}
+  .item button{flex:0 0 auto;padding:8px 10px;font-size:12px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .tile{padding:13px}
+  .tile small{font-size:12px;line-height:1.35;display:block}
+  .tile b{font-size:22px;overflow-wrap:anywhere}
+  .welcome{padding:20px 17px;margin-bottom:15px;border-radius:15px}
+  .welcome h2{font-size:24px;overflow-wrap:anywhere}
+  .infogrid{grid-template-columns:minmax(0,1fr);gap:8px}
+  .actions{display:grid;grid-template-columns:1fr;gap:8px}
+  .actions button,.actions .btn{width:100%;min-height:44px}
+  input,select,textarea{font-size:16px;min-height:44px}
+  textarea{min-height:110px}
+  label{margin-top:13px}
+  .pad{gap:8px}
+  .pad button{min-height:54px;padding:12px 0}
+  .pwdots{height:46px}
+  .itemrow{grid-template-columns:minmax(0,1fr) 78px 38px;gap:6px}
+  .itemrow input{min-width:0;padding:9px 7px}
+  .total{font-size:18px;gap:10px;flex-wrap:wrap}
+  .overlay{padding:12px;align-items:center}
+  .modal{width:100%;max-width:420px;padding:20px}
+  .toast{width:calc(100% - 28px);max-width:420px;text-align:center;bottom:16px;border-radius:12px}
+  .mode-shell{min-width:0;overflow:hidden}
+  .mode-main{min-width:0;padding:20px 14px!important}
+  .mode-brand h2{font-size:24px!important}
+  .mode-sidebar .entry-mode{min-width:0;overflow-wrap:anywhere}
+  footer{margin-top:26px}
+}
+@media (max-width:390px){
+  header.top{padding:9px 9px 7px;gap:7px}
+  .brand{font-size:16px}
+  #topActions{gap:4px}
+  #topActions button{padding:7px 8px;font-size:11px}
+  #topNav button{padding:8px 11px;font-size:12px}
+  .wrap{padding-left:9px;padding-right:9px}
+  .stats{grid-template-columns:1fr 1fr;gap:7px}
+  .tile b{font-size:19px}
+  .tabs{grid-template-columns:1fr 1fr}
+  .tabs button{font-size:11px}
+  .itemrow{grid-template-columns:minmax(0,1fr) 68px 34px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+
 </head>
 <body>
 
