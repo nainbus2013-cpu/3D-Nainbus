@@ -464,6 +464,15 @@
             <input type="file" id="logoFile" accept="image/*" style="margin-top:12px" onchange="uploadLogo(this)">
             <div style="margin-top:12px"><button class="small danger" onclick="removeLogo()">Remettre le logo d'origine</button></div>
           </div>
+          <div class="card" id="accountManagerCard">
+            <h3>Comptes administrateur et assistant</h3>
+            <p class="sub">Créez un compte avec un identifiant et un mot de passe numérique d’au moins 6 chiffres.</p>
+            <label for="newAccountUser">Identifiant</label><input id="newAccountUser" maxlength="40" autocomplete="off" placeholder="ex. assistant1">
+            <label for="newAccountPass">Mot de passe (6 chiffres minimum)</label><input id="newAccountPass" type="password" inputmode="numeric" autocomplete="new-password">
+            <label for="newAccountRole">Type de compte</label><select id="newAccountRole"><option value="assistant">Assistant — consultation du stock</option><option value="admin">Administrateur — accès complet</option></select>
+            <div style="margin-top:12px"><button class="primary" onclick="createAccount()">Créer le compte</button></div>
+            <div class="msg" id="accountMsg"></div><div class="list" id="accountList"></div>
+          </div>
           <div class="card">
             <h3>Changer le mot de passe</h3>
             <label for="npw">Nouveau mot de passe (chiffres uniquement, 6 min.)</label>
@@ -639,8 +648,9 @@ const lsGet = k => lsRead("nb3_x_" + k);
 const lsSet = (k,v) => lsWrite("nb3_x_" + k, v);
 const load = (k,d) => DB[k] ?? d;
 const save = (k,v) => {
+  if(!isAdmin()){ toast("Consultation uniquement : modification réservée à un administrateur."); return; }
   DB[k] = v;
-  if(ONLINE){ if(isAdmin()) pushSoon(k); }
+  if(ONLINE) pushSoon(k);
   else if(!lsWrite("nb3_" + k, v)) alert("Stockage impossible (espace plein ou image trop lourde ?)");
 };
 function loadLocal(){ SYNC_KEYS.forEach(k => { const v = lsRead("nb3_" + k); if(v != null) DB[k] = v; }); }
@@ -807,7 +817,9 @@ async function submitModal(){
 
 /* ============ Connexion gérant ============ */
 let loginPw = null;
-function isAdmin(){ return sessionStorage.getItem("nb_admin") === "1" && (!ONLINE || !!sessionStorage.getItem("nb_token")); }
+function isLoggedIn(){ return sessionStorage.getItem("nb_admin") === "1" && (!ONLINE || !!sessionStorage.getItem("nb_token")); }
+function isAdmin(){ return isLoggedIn() && (!ONLINE || sessionStorage.getItem("nb_role") !== "assistant"); }
+function isAssistant(){ return isLoggedIn() && ONLINE && sessionStorage.getItem("nb_role") === "assistant"; }
 function prepLogin(){
   loginPw = pwWidget($("loginPw"), login);
   $("lgUser").value = ""; $("loginMsg").textContent = "";
@@ -823,14 +835,15 @@ async function login(){
     const u = $("lgUser").value.trim().toLowerCase();
     if(ONLINE){
       const j = await api("login", {user:u, pass:loginPw.value()}, false);
-      sessionStorage.setItem("nb_token", j.token); sessionStorage.setItem("nb_admin", "1");
-      await pullAll();
+      sessionStorage.setItem("nb_token", j.token); sessionStorage.setItem("nb_admin", "1"); sessionStorage.setItem("nb_role", j.role || "admin"); sessionStorage.setItem("nb_username", j.user || u);
+      if(j.role === "assistant") { const d = await api("assistantData"); DB.stock = d.stock || []; }
+      else await pullAll();
     } else {
       if((await sha("nb-id:" + u)) !== AUTH.u || !(await localPwOk(loginPw.value()))) throw Object.assign(new Error("x"), {status:401});
-      sessionStorage.setItem("nb_admin", "1");
+      sessionStorage.setItem("nb_admin", "1"); sessionStorage.setItem("nb_role", "admin"); sessionStorage.setItem("nb_username", u);
     }
   }catch(e){
-    sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token");
+    sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token"); sessionStorage.removeItem("nb_role"); sessionStorage.removeItem("nb_username");
     err = e.status === 401 ? "Identifiant ou mot de passe incorrect." : e.status === 429 ? e.message : "Connexion au serveur impossible. Réessayez.";
   }
   await wait; $("loader").classList.add("hidden");
@@ -840,10 +853,30 @@ async function login(){
 function logout(){
   if(ONLINE){ try{ api("logout").catch(() => {}); }catch(e){} }
   loadFor(800, 1300, () => {
-    sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token"); curTab = "dash";
+    sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token"); sessionStorage.removeItem("nb_role"); sessionStorage.removeItem("nb_username"); curTab = "dash";
     (ONLINE ? pullPublic() : Promise.resolve()).catch(() => {}).then(() => go("home"));
   }, "Déconnexion…");
 }
+async function loadAccounts(){
+  if(!ONLINE || !isAdmin()) return;
+  try{
+    const j = await api("usersList");
+    $("accountList").innerHTML = (j.users || []).map(u => `<div class="item"><div><b>${esc(u.user)}</b><small>${u.role === "admin" ? "Administrateur" : "Assistant"}</small></div><button class="small danger" onclick="deleteAccount('${esc(u.id)}')">Supprimer</button></div>`).join("") || '<p class="sub">Aucun compte supplémentaire pour le moment.</p>';
+  }catch(e){ $("accountMsg").className="msg err"; $("accountMsg").textContent=e.message || "Impossible de charger les comptes."; }
+}
+async function createAccount(){
+  const user=$("newAccountUser").value.trim().toLowerCase(), pass=$("newAccountPass").value, role=$("newAccountRole").value, m=$("accountMsg");
+  if(!/^[a-z0-9._-]{3,40}$/.test(user)){m.className="msg err";m.textContent="Identifiant : 3 à 40 caractères (lettres, chiffres, point, tiret).";return;}
+  if(!/^\d{6,}$/.test(pass)){m.className="msg err";m.textContent="Le mot de passe doit contenir au moins 6 chiffres.";return;}
+  try{ await api("usersCreate",{user,pass,role}); $("newAccountUser").value=""; $("newAccountPass").value=""; m.className="msg ok";m.textContent="Compte créé ✔"; await loadAccounts(); }
+  catch(e){m.className="msg err";m.textContent=e.message || "Création impossible.";}
+}
+async function deleteAccount(id){
+  if(!confirm("Supprimer ce compte ? Cette action est définitive.")) return;
+  try{await api("usersDelete",{id}); await loadAccounts(); $("accountMsg").className="msg ok";$("accountMsg").textContent="Compte supprimé.";}
+  catch(e){$("accountMsg").className="msg err";$("accountMsg").textContent=e.message || "Suppression impossible.";}
+}
+
 async function changePw(){
   const p = $("npw").value, m = $("pwMsg");
   if(!/^\d{6,}$/.test(p)){ m.className = "msg err"; m.textContent = "Chiffres uniquement, 6 minimum."; return; }
@@ -865,7 +898,9 @@ let curTab = "dash", curView = "home", passLock = false;
 const ADMIN_TABS = ["dash","ticket","bordereau","stock","avis","messages","reglages"];
 
 function go(v){
-  if(PROTECTED.includes(v) && !isAdmin()) v = "adminLogin";
+  if(PROTECTED.includes(v) && !isLoggedIn()) v = "adminLogin";
+  if(isAssistant() && v !== "admin" && v !== "home") v = "admin";
+  if(isAssistant()) curTab = "stock";
   curView = v;
   views.forEach(x => $("v-"+x).classList.toggle("hidden", x !== v));
   if(v === "client"){ renderPublicReviews(); clientTab("avis"); refreshPublic(); refreshMine(); }
@@ -877,14 +912,14 @@ function go(v){
 }
 function renderTop(){
   const v = curView, nav = $("topNav"), t = $("topActions");
-  if(isAdmin()){
+  if(isLoggedIn()){
     $("brand").classList.add("hidden");
-    nav.innerHTML = NAV.map(([k,l]) =>
+    const visibleNav = isAssistant() ? [["stock","Consulter le stock"]] : NAV;
+    nav.innerHTML = visibleNav.map(([k,l]) =>
       `<button data-nav="${k}" class="${v==="admin" && curTab===k ? "active" : ""}">${l}${LOCKED.includes(k) ? ' <span class="lk">🔒</span>' : ""}${k==="messages" ? '<span class="bdg hidden" id="msgBadge"></span>' : ""}</button>`).join("");
-    t.innerHTML = '<span class="syncdot" id="syncDot"></span><button class="clientbtn" title="Espace client" aria-label="Espace client" onclick="openClients()">' + USER_SVG + '<span>Espace client</span></button>' +
+    t.innerHTML = (isAdmin() ? '<span class="syncdot" id="syncDot"></span><button class="clientbtn" title="Espace client" aria-label="Espace client" onclick="openClients()">' + USER_SVG + '<span>Espace client</span></button>' : '<span class="sub">Assistant · lecture seule</span>') +
                   '<button class="logoutbtn" onclick="logout()">Déconnexion</button>';
-    setSync(syncState);
-    updateBadge();
+    if(isAdmin()){ setSync(syncState); updateBadge(); }
   } else {
     $("brand").classList.remove("hidden");
     nav.innerHTML = "";
@@ -893,6 +928,7 @@ function renderTop(){
 }
 $("topNav").addEventListener("click", e => { const b = e.target.closest("button[data-nav]"); if(b) navTo(b.dataset.nav); });
 function navTo(t){
+  if(isAssistant() && t !== "stock"){ toast("L’espace assistant permet uniquement de consulter le stock."); return; }
   const run = () => { curTab = t; passLock = true; go("admin"); };
   if(LOCKED.includes(t) && !(curView === "admin" && curTab === t)) askCode(() => loadFor(1000, 1800, run));
   else run();
@@ -918,6 +954,8 @@ function renderTicketSub(){
 $("ticketTabs").addEventListener("click", e => { const b = e.target.closest("button[data-ts]"); if(b) setTicketSub(b.dataset.ts); });
 
 function showTab(t){
+  if(isAssistant() && t !== "stock") t = "stock";
+  if(!isAdmin() && !isAssistant()) return;
   curTab = t;
   if(t !== "ticket"){ searchUnlocked = false; ticketSub = "create"; }
   ADMIN_TABS.forEach(x => $("t-"+x).classList.toggle("hidden", x !== t));
@@ -927,7 +965,7 @@ function showTab(t){
   if(t === "stock") renderStock();
   if(t === "avis") renderAdminReviews();
   if(t === "messages") renderMessages();
-  if(t === "reglages") renderCA();
+  if(t === "reglages") { renderCA(); if(isAdmin()) { $("accountManagerCard").classList.toggle("hidden", !ONLINE); loadAccounts(); } }
   renderTop();
 }
 function renderBordereauClients(){
@@ -1400,7 +1438,7 @@ function renderItems(){
 const DEFAULT_STOCK = [["Bleu foncé","#1e3a8a"],["Rouge","#dc2626"],["Noir","#111827"],["Blanc","#f8fafc"]];
 function getStock(){
   let s = load(K.stock, null);
-  if(!Array.isArray(s)){ s = DEFAULT_STOCK.map(([name,hex],i) => ({id:"d"+i, name, hex, inStock:true})); save(K.stock, s); }
+  if(!Array.isArray(s)){ s = DEFAULT_STOCK.map(([name,hex],i) => ({id:"d"+i, name, hex, inStock:true})); if(isAdmin()) save(K.stock, s); }
   return s;
 }
 function renderStock(){
@@ -1409,10 +1447,16 @@ function renderStock(){
     <div class="item" style="box-shadow:inset 5px 0 0 ${c.inStock ? "var(--ok)" : "var(--danger)"}">
       <div style="display:flex;align-items:center;gap:12px"><span class="swatch" style="background:${esc(c.hex)}"></span>
         <div><b>${esc(c.name)}</b><small>${c.inStock ? "✅ En stock" : "❌ Plus en stock"}</small></div></div>
-      <div class="actions" style="margin:0">
+      ${isAdmin() ? `<div class="actions" style="margin:0">
         <button class="small ${c.inStock ? "" : "primary"}" onclick="toggleStock('${c.id}')">${c.inStock ? "Plus en stock" : "Remettre en stock"}</button>
-        <button class="small danger" onclick="delColor('${c.id}')">Supprimer</button></div></div>`).join("")
-    : '<p class="sub">Aucune couleur. Ajoutez-en une ci-dessous.</p>';
+        <button class="small danger" onclick="delColor('${c.id}')">Supprimer</button></div>` : ''}</div>`).join("")
+    : '<p class="sub">Aucune couleur enregistrée.</p>';
+  const stockCard = document.querySelector("#t-stock .card");
+  const subPanels = stockCard ? stockCard.querySelectorAll(".sub") : [];
+  if(subPanels[1]) subPanels[1].classList.toggle("hidden", !isAdmin());
+  const addInputs = document.querySelector("#t-stock .searchrow");
+  if(addInputs) addInputs.classList.toggle("hidden", !isAdmin());
+  const stMsg = $("stMsg"); if(stMsg) stMsg.classList.toggle("hidden", !isAdmin());
 }
 function addColor(){
   const name = $("newColName").value.trim(), hex = $("newColHex").value, m = $("stMsg");
@@ -1550,10 +1594,26 @@ function ensureCurrentTicketSaved(){
   currentSavedDraft = {signature:ticketSignature(d), ticket:d};
   return d;
 }
-function saveTicket(mode){
+async function saveTicket(mode){
   const d = ensureCurrentTicketSaved();
   if(!d) return;
-  toast("Ticket n° " + tdisp(d.number) + " enregistré dans le site ✔");
+  // En ligne, confirmer l'écriture serveur avant d'annoncer que le ticket est enregistré.
+  if(ONLINE){
+    try{
+      await api("set", {key:"tickets", value:DB.tickets});
+      pending.delete("tickets");
+      if(!pending.size) setSync("ok");
+      toast("Ticket n° " + tdisp(d.number) + " enregistré en ligne ✔");
+    }catch(e){
+      pending.add("tickets");
+      setSync("err");
+      toast("Échec de l’enregistrement en ligne. Vérifiez la connexion et réessayez.");
+    }
+  }else{
+    const ok = lsWrite("nb3_tickets", DB.tickets);
+    if(ok) toast("Ticket n° " + tdisp(d.number) + " enregistré sur cet appareil ✔");
+    else toast("Impossible d’enregistrer le ticket sur cet appareil.");
+  }
 }
 async function downloadCurrentClientPdf(){
   const d = ensureCurrentTicketSaved(); if(!d) return;
@@ -1873,12 +1933,12 @@ tickClock(); setInterval(tickClock, 1000);
   $("loaderTxt").textContent = "Chargement…"; $("loader").classList.remove("hidden");
   ONLINE = await detectOnline();
   if(ONLINE){
-    try{ if(isAdmin()) await pullAll(); else await pullPublic(); }
-    catch(e){ if(!isAdmin()) toast("Connexion au serveur impossible"); }
+    try{ if(isAdmin()) await pullAll(); else if(isAssistant()){ const d=await api("assistantData"); DB.stock=d.stock || []; } else await pullPublic(); }
+    catch(e){ if(!isLoggedIn()) toast("Connexion au serveur impossible"); }
   } else loadLocal();
   $("loader").classList.add("hidden");
   initLogo();
-  go(isAdmin() ? "admin" : "home");
+  go(isLoggedIn() ? "admin" : "home");
 })();
 </script>
 </body>
