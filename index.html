@@ -145,6 +145,25 @@
   .swatch{width:30px;height:30px;border:2px solid #fff;box-shadow:0 0 0 1px var(--border),var(--sh-s);border-radius:50%;flex:none}
   .reply{margin-top:10px;padding:12px 15px;background:#e9f9f3;border-radius:12px;border-left:4px solid var(--ok);white-space:pre-wrap;word-break:break-word}
   .replybox textarea{min-height:80px;margin-top:10px}
+
+  #v-adminLogin .access-shell{display:grid;grid-template-columns:170px minmax(0,1fr);max-width:1050px;min-height:550px;margin:0 auto;background:#fff;border:1px solid #c7e5e5;border-radius:14px;overflow:hidden;box-shadow:0 10px 35px rgba(14,77,88,.08)}
+  #v-adminLogin .access-modes{background:#e1f5f3;padding:14px 10px;display:flex;flex-direction:column;gap:12px}
+  #v-adminLogin .mode-card{width:100%;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:#fff;border:2px solid #b5e0e0;border-radius:12px;color:#164b60;font-weight:700;line-height:1.2;padding:10px 5px}
+  #v-adminLogin .mode-card .mode-icon{font-size:30px;line-height:1}
+  #v-adminLogin .mode-card.active{background:#a8e0dc;border-color:#137b7a}
+  #v-adminLogin .access-main{padding:30px clamp(16px,5vw,55px);display:flex;flex-direction:column;justify-content:center}
+  #v-adminLogin .access-brand{display:flex;align-items:center;gap:16px;margin:0 0 30px}
+  #v-adminLogin .access-brand img{width:76px;height:76px;object-fit:contain}
+  #v-adminLogin .access-brand h2{font-size:clamp(25px,4vw,40px);margin:0;color:#164b60}
+  #v-adminLogin .access-brand p{margin:4px 0 0;color:#64828d}
+  #v-adminLogin .access-form{max-width:570px;width:100%;margin:0 auto}
+  #v-adminLogin .access-form label{display:block;font-size:17px;font-weight:700;color:#164b60;margin:16px 0 7px}
+  #v-adminLogin .access-form input{width:100%;box-sizing:border-box;padding:12px;border:2px solid #91d0d1;border-radius:9px;font-size:16px}
+  #v-adminLogin .access-form .actions{justify-content:center;margin-top:24px}
+  #v-adminLogin .access-form .primary{min-width:180px;background:#b5e2e2;color:#164b60;border-color:#b5e2e2;font-weight:700}
+  #v-adminLogin .access-hint{text-align:center;color:#6b8790;font-size:13px;margin-top:18px}
+  @media(max-width:620px){#v-adminLogin .access-shell{grid-template-columns:88px minmax(0,1fr);min-height:0}#v-adminLogin .access-modes{padding:8px 5px;gap:8px}#v-adminLogin .mode-card{min-height:95px;font-size:11px;padding:7px 2px}#v-adminLogin .mode-card .mode-icon{font-size:24px}#v-adminLogin .access-main{padding:22px 12px}#v-adminLogin .access-brand{gap:8px;margin-bottom:18px;flex-wrap:wrap}#v-adminLogin .access-brand img{width:48px;height:48px}#v-adminLogin .access-brand h2{font-size:21px}#v-adminLogin .access-form label{font-size:14px}#v-adminLogin .access-form input{padding:10px 8px;font-size:14px}}
+
 </style>
 <link rel="stylesheet" href="/style-retro.css">
 
@@ -322,17 +341,22 @@
 
   <!-- CONNEXION GÉRANT -->
   <section id="v-adminLogin" class="hidden">
-    <div class="card narrow">
-      <h3>Espace gérant</h3>
-      <label for="lgUser">Identifiant</label>
-      <input id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false">
-      <label>Mot de passe</label>
-      <div id="loginPw"></div>
-      <div class="msg err" id="loginMsg"></div>
-      <div class="actions" style="margin-top:6px">
-        <button class="primary" onclick="login()">Connexion</button>
-        <button onclick="go('home')">Retour</button>
-      </div>
+    <div class="access-shell">
+      <aside class="access-modes" aria-label="Choisir un mode">
+        <button type="button" class="mode-card active" id="modeManager" onclick="selectLoginMode('admin')"><span class="mode-icon">🔑</span><span>Mode<br>gérant</span></button>
+        <button type="button" class="mode-card" id="modeAssistant" onclick="selectLoginMode('assistant')"><span class="mode-icon">🧑‍💼</span><span>Mode<br>assistant</span></button>
+        <button type="button" class="mode-card" onclick="go('home')"><span class="mode-icon">👤</span><span>Mode<br>client</span></button>
+      </aside>
+      <main class="access-main">
+        <div class="access-brand"><img id="accessLogo" alt="Logo 3D Nainbus"><div><h2>3D Nainbus</h2><p id="accessSubtitle">Espace gérant</p></div></div>
+        <div class="access-form">
+          <label for="lgUser">Identifiant</label><input id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Votre identifiant">
+          <label>Mot de passe</label><div id="loginPw"></div>
+          <div class="msg err" id="loginMsg" role="alert"></div>
+          <div class="actions"><button class="primary" onclick="login()">Se connecter</button></div>
+          <p class="access-hint">Choisissez votre mode, puis saisissez vos identifiants.</p>
+        </div>
+      </main>
     </div>
   </section>
 
@@ -820,9 +844,21 @@ let loginPw = null;
 function isLoggedIn(){ return sessionStorage.getItem("nb_admin") === "1" && (!ONLINE || !!sessionStorage.getItem("nb_token")); }
 function isAdmin(){ return isLoggedIn() && (!ONLINE || sessionStorage.getItem("nb_role") !== "assistant"); }
 function isAssistant(){ return isLoggedIn() && ONLINE && sessionStorage.getItem("nb_role") === "assistant"; }
+let selectedLoginMode = "admin";
+function selectLoginMode(mode){
+  selectedLoginMode = mode === "assistant" ? "assistant" : "admin";
+  $("modeManager").classList.toggle("active", selectedLoginMode === "admin");
+  $("modeAssistant").classList.toggle("active", selectedLoginMode === "assistant");
+  $("accessSubtitle").textContent = selectedLoginMode === "assistant" ? "Espace assistant — consultation du stock" : "Espace gérant";
+  $("loginMsg").textContent = "";
+}
 function prepLogin(){
   loginPw = pwWidget($("loginPw"), login);
   $("lgUser").value = ""; $("loginMsg").textContent = "";
+  selectLoginMode(selectedLoginMode);
+  const logo = $("logoBig");
+  if(logo && logo.src) $("accessLogo").src = logo.src;
+  else $("accessLogo").src = "/3D_Nainbus.ico";
   if(!IS_TOUCH) setTimeout(() => $("lgUser").focus(), 40);
 }
 $("lgUser").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); loginPw && loginPw.focus(); } });
@@ -834,7 +870,7 @@ async function login(){
   try{
     const u = $("lgUser").value.trim().toLowerCase();
     if(ONLINE){
-      const j = await api("login", {user:u, pass:loginPw.value()}, false);
+      const j = await api("login", {user:u, pass:loginPw.value(), mode:selectedLoginMode}, false);
       sessionStorage.setItem("nb_token", j.token); sessionStorage.setItem("nb_admin", "1"); sessionStorage.setItem("nb_role", j.role || "admin"); sessionStorage.setItem("nb_username", j.user || u);
       if(j.role === "assistant") { const d = await api("assistantData"); DB.stock = d.stock || []; }
       else await pullAll();
