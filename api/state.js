@@ -1,3 +1,4 @@
+```javascript
 // api/state.js — sauvegarde en ligne pour 3D Nainbus (Vercel + Upstash Redis)
 // Variables Vercel : KV_REST_API_URL + KV_REST_API_TOKEN
 // ou UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
@@ -221,7 +222,7 @@ module.exports = async (req, res) => {
 
     const a = b.action;
 
-    // Connexion administrateur
+    // Connexion
     if (a === "login") {
       await limit(
         req,
@@ -250,7 +251,7 @@ module.exports = async (req, res) => {
       const found = users.find(
         x =>
           x.user === user &&
-          ["admin", "assistant"].includes(x.role)
+          (x.role === "admin" || x.role === "assistant")
       );
 
       if (!found || sha(found.salt + pass) !== found.hash) {
@@ -427,6 +428,7 @@ module.exports = async (req, res) => {
       }
 
       const salt = uid();
+
       await setK("pass", {
         salt,
         hash: sha(salt + p)
@@ -435,7 +437,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // Gestion des comptes par l'administrateur
+    // Gestion des comptes
     if (a === "usersList") {
       const users = (await getK("users", [])) || [];
 
@@ -546,6 +548,7 @@ module.exports = async (req, res) => {
             text: clean(b.text, 1500),
             date: Date.now()
           };
+
           m.read = true;
         }
       }
@@ -568,3 +571,4 @@ module.exports = async (req, res) => {
     );
   }
 };
+```
