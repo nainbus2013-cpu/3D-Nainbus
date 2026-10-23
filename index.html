@@ -146,23 +146,12 @@
   .reply{margin-top:10px;padding:12px 15px;background:#e9f9f3;border-radius:12px;border-left:4px solid var(--ok);white-space:pre-wrap;word-break:break-word}
   .replybox textarea{min-height:80px;margin-top:10px}
 
-  #v-adminLogin .access-shell{display:grid;grid-template-columns:170px minmax(0,1fr);max-width:1050px;min-height:550px;margin:0 auto;background:#fff;border:1px solid #c7e5e5;border-radius:14px;overflow:hidden;box-shadow:0 10px 35px rgba(14,77,88,.08)}
-  #v-adminLogin .access-modes{background:#e1f5f3;padding:14px 10px;display:flex;flex-direction:column;gap:12px}
-  #v-adminLogin .mode-card{width:100%;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:#fff;border:2px solid #b5e0e0;border-radius:12px;color:#164b60;font-weight:700;line-height:1.2;padding:10px 5px}
-  #v-adminLogin .mode-card .mode-icon{font-size:30px;line-height:1}
-  #v-adminLogin .mode-card.active{background:#a8e0dc;border-color:#137b7a}
-  #v-adminLogin .access-main{padding:30px clamp(16px,5vw,55px);display:flex;flex-direction:column;justify-content:center}
-  #v-adminLogin .access-brand{display:flex;align-items:center;gap:16px;margin:0 0 30px}
-  #v-adminLogin .access-brand img{width:76px;height:76px;object-fit:contain}
-  #v-adminLogin .access-brand h2{font-size:clamp(25px,4vw,40px);margin:0;color:#164b60}
-  #v-adminLogin .access-brand p{margin:4px 0 0;color:#64828d}
-  #v-adminLogin .access-form{max-width:570px;width:100%;margin:0 auto}
-  #v-adminLogin .access-form label{display:block;font-size:17px;font-weight:700;color:#164b60;margin:16px 0 7px}
-  #v-adminLogin .access-form input{width:100%;box-sizing:border-box;padding:12px;border:2px solid #91d0d1;border-radius:9px;font-size:16px}
-  #v-adminLogin .access-form .actions{justify-content:center;margin-top:24px}
-  #v-adminLogin .access-form .primary{min-width:180px;background:#b5e2e2;color:#164b60;border-color:#b5e2e2;font-weight:700}
-  #v-adminLogin .access-hint{text-align:center;color:#6b8790;font-size:13px;margin-top:18px}
-  @media(max-width:620px){#v-adminLogin .access-shell{grid-template-columns:88px minmax(0,1fr);min-height:0}#v-adminLogin .access-modes{padding:8px 5px;gap:8px}#v-adminLogin .mode-card{min-height:95px;font-size:11px;padding:7px 2px}#v-adminLogin .mode-card .mode-icon{font-size:24px}#v-adminLogin .access-main{padding:22px 12px}#v-adminLogin .access-brand{gap:8px;margin-bottom:18px;flex-wrap:wrap}#v-adminLogin .access-brand img{width:48px;height:48px}#v-adminLogin .access-brand h2{font-size:21px}#v-adminLogin .access-form label{font-size:14px}#v-adminLogin .access-form input{padding:10px 8px;font-size:14px}}
+  .entry-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;max-width:900px;margin:28px auto 18px}
+  .entry-mode{min-height:155px;border:2px solid #b8dddd;border-radius:16px;background:#fff;color:#164b60;padding:20px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:17px;font-weight:700;box-shadow:0 5px 18px rgba(20,80,90,.07)}
+  .entry-mode .entry-icon{font-size:38px;line-height:1}
+  .entry-mode:hover,.entry-mode:focus{background:#e1f5f3;border-color:#318d8d}
+  .entry-note{max-width:760px;margin:18px auto 0;color:var(--muted,#667);font-size:14px;line-height:1.5}
+  @media(max-width:600px){.entry-modes{gap:7px;margin:22px auto 12px}.entry-mode{min-height:112px;padding:12px 4px;font-size:12px;gap:8px;border-radius:11px}.entry-mode .entry-icon{font-size:27px}.entry-note{font-size:13px;padding:0 8px}}
 
 </style>
 <link rel="stylesheet" href="/style-retro.css">
@@ -208,6 +197,29 @@
   #v-adminLogin .actions{display:flex;gap:8px;flex-wrap:wrap}#v-adminLogin .actions button{min-width:110px}
   canvas{border-radius:3px;box-shadow:none}
   @media(max-width:760px){.wrap{padding:16px 10px 32px}.hero{padding:30px 14px 24px}.hero h2{font-size:27px}.card,.tile{padding:16px}#v-adminLogin .card{margin:20px auto;padding:20px}}
+
+  /* Présentation avec les modes dans une colonne latérale */
+  .mode-shell{display:flex;min-height:548px;background:#fff;border:1px solid #cbdde1;border-radius:14px;overflow:hidden;box-shadow:0 12px 32px rgba(45,72,91,.08);margin:0 auto 28px;max-width:1100px}
+  .mode-sidebar{width:170px;flex:0 0 170px;background:#e0f4f3;padding:14px 10px;display:flex;flex-direction:column;gap:12px;border-right:1px solid #d1e9e8}
+  .mode-sidebar .entry-mode{min-height:120px;border:2px solid #b7dfe0;border-radius:13px;background:#fff;color:#12334a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:14px;line-height:1.2;text-align:center;padding:10px}
+  .mode-sidebar .entry-mode.active,.mode-sidebar .entry-mode:hover{background:#afe0df;border-color:#087d7e}
+  .entry-icon{font-size:27px;line-height:1.1}
+  .mode-main{flex:1;min-width:0;padding:44px 54px 30px;background:#fff}
+  .mode-brand{display:flex;align-items:center;gap:18px;margin:0 0 38px}
+  .mode-brand .logo-big{width:74px;height:74px;object-fit:contain;margin:0;display:block}
+  .mode-brand h2{font-size:40px;line-height:1.15;color:#164b68;margin:0;font-weight:700}
+  .mode-brand p{font-size:16px;color:#5d7083;margin:12px 0 0}
+  .mode-login{max-width:570px;margin:0 auto}
+  .mode-login label{display:block;color:#123f58;font-size:16px;margin:0 0 10px}
+  .mode-login input{box-sizing:border-box;width:100%;height:53px;padding:12px 13px;border:2px solid #83d2d4;border-radius:10px;background:#f7f9fb;font-size:16px;margin-bottom:17px}
+  .mode-login input:focus{outline:none;border-color:#4ab7bc;box-shadow:0 0 0 2px #d5f0f0}
+  .mode-submit{display:block;margin:40px auto 18px;min-width:180px;height:44px;background:#b5e2e2!important;border:0!important;border-radius:4px;color:#123f58!important}
+  .mode-hint{text-align:center;color:#5d7083;font-size:13px;margin:18px 0 0}
+  .mode-login .entry-note{text-align:center;color:#5d7083;font-size:13px;margin-top:18px;background:transparent;border:0;padding:0}
+  body:has(#v-home:not(.hidden)) header.top{display:none}
+  body:has(#v-home:not(.hidden)) .wrap{max-width:1100px;padding-top:4px}
+  @media(max-width:700px){.mode-shell{min-height:0;flex-direction:column}.mode-sidebar{width:auto;flex:0 0 auto;flex-direction:row;padding:10px;gap:8px;border-right:0;border-bottom:1px solid #d1e9e8}.mode-sidebar .entry-mode{flex:1;min-height:88px;padding:7px 3px;font-size:12px}.entry-icon{font-size:23px}.mode-main{padding:28px 20px}.mode-brand{gap:12px;margin-bottom:28px}.mode-brand .logo-big{width:58px;height:58px}.mode-brand h2{font-size:28px}}
+
 </style>
 
 <style id="classic-2019-palette-v2">
@@ -241,6 +253,31 @@
   @media(max-width:760px){header.top{background:#e8edf2}}
 </style>
 
+<style id="nainbus-unified-rounded-theme">
+:root{--bg:#eaf1f5;--card:#fff;--border:#c9e0e2;--text:#173f55;--muted:#60798a;--accent:#278f91;--accent2:#49b9b9;--accent-dark:#176f78;--accent-soft:#dff3f2;--mint:#8ed7d3;--danger:#c94f60;--ok:#258d79;--soft:#f4f9fa;--gold:#d6a33c;--r:16px;--grad:linear-gradient(135deg,#2b9296 0%,#52c2c0 100%);--sh:0 4px 12px rgba(30,91,109,.07),0 12px 30px rgba(30,91,109,.08);--sh-s:0 2px 7px rgba(30,91,109,.09)}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+h2,h3,.brand,.tile b,.total{font-family:'Poppins','Inter',sans-serif;letter-spacing:normal}
+header.top{background:rgba(255,255,255,.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);box-shadow:0 3px 14px rgba(30,91,109,.07);min-height:66px}
+.brand{color:var(--text)}.brand i{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+#topNav{gap:5px}#topNav button{border-radius:999px;color:var(--muted);padding:9px 15px}#topNav button:hover{background:var(--accent-soft);color:var(--accent-dark)}#topNav button.active{background:var(--grad);color:#fff;box-shadow:0 5px 13px rgba(39,143,145,.22)}
+.clientbtn{border:1px solid #c5e5e4;border-radius:999px;background:var(--accent-soft);color:var(--accent-dark)}.clientbtn:hover{background:var(--accent);color:#fff}
+.wrap{max-width:1200px;padding:26px 22px 48px}
+.card,.tile{background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:var(--sh-s);padding:22px}
+.hero{background:#fff;border:1px solid var(--border);border-radius:22px;box-shadow:var(--sh);padding:34px 24px}
+.hero::before,.hero::after,.welcome::after{border-radius:inherit}.hero h2{color:var(--text)}.grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}.hero p{color:var(--muted)}.hero p.note{background:var(--accent-soft);border:1px solid var(--border);border-radius:14px}
+button,.btn{border:1px solid #c7dddd;border-radius:12px;box-shadow:0 2px 5px rgba(30,91,109,.04);color:var(--text);transition:background .18s,border-color .18s,box-shadow .18s,transform .18s;padding:10px 16px;font-weight:600}
+button:hover,.btn:hover{transform:translateY(-1px);border-color:#83c9c9;box-shadow:0 5px 12px rgba(30,91,109,.09)}button.primary,.btn.primary{background:var(--grad);border-color:transparent;color:#fff;box-shadow:0 5px 13px rgba(39,143,145,.19)}button.primary:hover,.btn.primary:hover{background:linear-gradient(135deg,#217c82,#39a9a9);color:#fff}
+label{font-weight:650;color:#214e62}input,textarea,select{background:#f7fafb;border:1.5px solid #c5dddd;border-radius:11px;padding:11px 13px;color:var(--text);transition:border-color .18s,box-shadow .18s}input:focus,textarea:focus,select:focus{border-color:#43b6b8;background:#fff;box-shadow:0 0 0 3px rgba(67,182,184,.15);outline:none}
+.chk,.viaopt{border-radius:12px}.viaopt{background:#fff;border-color:var(--border)}.viaopt.sel{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px rgba(39,143,145,.08)}
+.tabs{gap:6px}.tabs button{border:1px solid var(--border);border-radius:999px;background:#f4f9fa;color:var(--muted)}.tabs button.active{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 4px 10px rgba(39,143,145,.16)}
+.item{border:1px solid var(--border);border-radius:14px;background:#fff}.item.click:hover{background:#f3fbfb;border-color:#9bd4d3}.avatar{border-radius:50%;background:var(--grad);box-shadow:0 3px 8px rgba(39,143,145,.17)}.tag,.code{border-radius:999px;background:var(--accent-soft);color:var(--accent-dark)}.swatch{border-radius:50%}
+.welcome{background:var(--grad);border-radius:18px;box-shadow:var(--sh)}.infogrid div{border-radius:13px;background:#f0f8f8}.modal{background:#fff;border:1px solid var(--border);border-radius:20px;box-shadow:0 16px 50px rgba(23,63,85,.18)}.toast{border-radius:13px;box-shadow:0 8px 24px rgba(23,63,85,.17)}.reply{background:#e8f7f2;border-radius:13px;border-left-color:var(--ok)}
+#v-adminLogin .card{background:#fff;border:1px solid var(--border);border-top:4px solid var(--accent);border-radius:18px;box-shadow:var(--sh);padding:26px 28px}#v-adminLogin h3{border-bottom:1px solid var(--border)}
+canvas{border-radius:12px;box-shadow:0 2px 8px rgba(23,63,85,.07)}
+.mode-shell{border:1px solid var(--border);border-radius:18px;box-shadow:var(--sh);background:#fff}.mode-sidebar{background:#e1f4f3;border-right:1px solid #c9e8e6}.mode-sidebar .entry-mode{border:2px solid #c3e5e4;border-radius:14px;box-shadow:0 2px 7px rgba(30,91,109,.04);transition:all .18s}.mode-sidebar .entry-mode.active,.mode-sidebar .entry-mode:hover{background:#b5e3e1;border-color:#278f91;box-shadow:0 4px 12px rgba(39,143,145,.12)}.mode-main{background:#fff}.mode-brand h2{color:#164b68}.mode-login input{border:1.5px solid #83d2d4;border-radius:11px}.mode-submit{border-radius:10px;box-shadow:0 4px 10px rgba(39,143,145,.12)}
+@media(max-width:760px){.wrap{padding:16px 12px 32px}.card,.tile{padding:16px}.hero{border-radius:18px;padding:26px 16px}.mode-shell{border-radius:16px}}
+</style>
+
 </head>
 <body>
 
@@ -253,17 +290,25 @@
 
 <div class="wrap">
 
-  <!-- ACCUEIL -->
-  <section id="v-home" class="hidden">
-    <div class="hero">
-      <img id="logoBig" class="logo-big" alt="Logo 3D Nainbus">
-      <h2>Bienvenue chez <span class="grad">3D Nainbus</span></h2>
-      <p>Laissez-nous un avis.</p>
-      <div class="btns">
-        <button class="primary" onclick="go('adminLogin')">🔐 Se connecter en tant que gérant</button>
-        <button onclick="go('client')">👤 Compte client</button>
+  <!-- ACCUEIL : choix des modes sur le côté, connexion à droite -->
+  <section id="v-home" class="hidden mode-shell">
+    <aside class="mode-sidebar">
+      <button class="entry-mode active" onclick="selectLoginMode('admin')"><span class="entry-icon">🔑</span><span>Mode<br>gérant</span></button>
+      <button class="entry-mode" onclick="selectLoginMode('assistant')"><span class="entry-icon">🧑‍💼</span><span>Mode<br>assistant</span></button>
+      <button class="entry-mode" onclick="go('client')"><span class="entry-icon">👤</span><span>Mode<br>client</span></button>
+    </aside>
+    <div class="mode-main">
+      <div class="mode-brand"><img id="logoBig" class="logo-big" alt="Logo 3D Nainbus"><div><h2>3D Nainbus</h2><p id="modeSubtitle">Espace gérant</p></div></div>
+      <div class="mode-login">
+        <label for="homeLgUser">Identifiant</label>
+        <input id="homeLgUser" placeholder="Votre identifiant" autocomplete="username" autocapitalize="none" spellcheck="false" onkeydown="if(event.key==='Enter'){$('homeLgPass').focus()}">
+        <label for="homeLgPass">Mot de passe</label>
+        <input id="homeLgPass" type="password" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
+        <div class="msg err" id="homeLoginMsg"></div>
+        <button class="primary mode-submit" onclick="loginFromHome()">Se connecter</button>
+        <p class="mode-hint">Choisissez votre mode, puis saisissez vos identifiants.</p>
+        <p class="entry-note">En cas de problème, ou pour contacter l’espace gérant, merci de passer par l’espace compte client.</p>
       </div>
-      <p class="note">En cas de problème, ou pour contacter l'espace gérant, merci d'aller dans l'espace compte client.</p>
     </div>
   </section>
 
@@ -341,22 +386,17 @@
 
   <!-- CONNEXION GÉRANT -->
   <section id="v-adminLogin" class="hidden">
-    <div class="access-shell">
-      <aside class="access-modes" aria-label="Choisir un mode">
-        <button type="button" class="mode-card active" id="modeManager" onclick="selectLoginMode('admin')"><span class="mode-icon">🔑</span><span>Mode<br>gérant</span></button>
-        <button type="button" class="mode-card" id="modeAssistant" onclick="selectLoginMode('assistant')"><span class="mode-icon">🧑‍💼</span><span>Mode<br>assistant</span></button>
-        <button type="button" class="mode-card" onclick="go('home')"><span class="mode-icon">👤</span><span>Mode<br>client</span></button>
-      </aside>
-      <main class="access-main">
-        <div class="access-brand"><img id="accessLogo" alt="Logo 3D Nainbus"><div><h2>3D Nainbus</h2><p id="accessSubtitle">Espace gérant</p></div></div>
-        <div class="access-form">
-          <label for="lgUser">Identifiant</label><input id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Votre identifiant">
-          <label>Mot de passe</label><div id="loginPw"></div>
-          <div class="msg err" id="loginMsg" role="alert"></div>
-          <div class="actions"><button class="primary" onclick="login()">Se connecter</button></div>
-          <p class="access-hint">Choisissez votre mode, puis saisissez vos identifiants.</p>
-        </div>
-      </main>
+    <div class="card narrow">
+      <h3 id="loginTitle">Espace gérant</h3>
+      <label for="lgUser">Identifiant</label>
+      <input id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false">
+      <label>Mot de passe</label>
+      <div id="loginPw"></div>
+      <div class="msg err" id="loginMsg"></div>
+      <div class="actions" style="margin-top:6px">
+        <button class="primary" onclick="login()">Se connecter</button>
+        <button onclick="go('home')">Retour aux modes</button>
+      </div>
     </div>
   </section>
 
@@ -847,23 +887,29 @@ function isAssistant(){ return isLoggedIn() && ONLINE && sessionStorage.getItem(
 let selectedLoginMode = "admin";
 function selectLoginMode(mode){
   selectedLoginMode = mode === "assistant" ? "assistant" : "admin";
-  $("modeManager").classList.toggle("active", selectedLoginMode === "admin");
-  $("modeAssistant").classList.toggle("active", selectedLoginMode === "assistant");
-  $("accessSubtitle").textContent = selectedLoginMode === "assistant" ? "Espace assistant — consultation du stock" : "Espace gérant";
-  $("loginMsg").textContent = "";
+  const title = $("loginTitle");
+  if(title) title.textContent = selectedLoginMode === "assistant" ? "Espace assistant" : "Espace gérant";
+  const subtitle = $("modeSubtitle"); if(subtitle) subtitle.textContent = selectedLoginMode === "assistant" ? "Espace assistant" : "Espace gérant";
+  document.querySelectorAll(".mode-sidebar .entry-mode").forEach((b,i)=>b.classList.toggle("active", i === (selectedLoginMode === "assistant" ? 1 : 0)));
+  const msg = $("loginMsg"); if(msg) msg.textContent = "";
+  const homeMsg = $("homeLoginMsg"); if(homeMsg) homeMsg.textContent = "";
 }
 function prepLogin(){
   loginPw = pwWidget($("loginPw"), login);
   $("lgUser").value = ""; $("loginMsg").textContent = "";
-  selectLoginMode(selectedLoginMode);
-  const logo = $("logoBig");
-  if(logo && logo.src) $("accessLogo").src = logo.src;
-  else $("accessLogo").src = "/3D_Nainbus.ico";
   if(!IS_TOUCH) setTimeout(() => $("lgUser").focus(), 40);
 }
 $("lgUser").addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); loginPw && loginPw.focus(); } });
+function loginFromHome(){
+  const user = $("homeLgUser").value.trim();
+  const pass = $("homeLgPass").value;
+  $("lgUser").value = user;
+  if(!loginPw) loginPw = {value:()=>pass, clear:()=>{ $("homeLgPass").value=""; }, focus:()=>$("homeLgPass").focus()};
+  else loginPw = {value:()=>pass, clear:()=>{ $("homeLgPass").value=""; }, focus:()=>$("homeLgPass").focus()};
+  login();
+}
 async function login(){
-  const m = $("loginMsg");
+  const m = $("loginMsg"); if($("homeLoginMsg")) $("homeLoginMsg").textContent = "";
   $("loaderTxt").textContent = "Connexion…"; $("loader").classList.remove("hidden");
   const wait = new Promise(r => setTimeout(r, rnd(1200, 2000)));
   let err = "";
