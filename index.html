@@ -369,6 +369,25 @@ button,.btn,input,select,textarea{ max-width:100%; }
 @media(max-width:600px){.tariff-editor-row{grid-template-columns:1fr 1fr;gap:8px}.tariff-editor-row .tariff-delete{grid-column:1/-1;justify-self:start}.tariff-card{padding:13px}.tariff-card .tariff-price{font-size:22px}}
 </style>
 
+
+<style id="adm-administrator-theme">
+  body.adm-theme{
+    --bg:#f0edf9;--card:#fff;--border:#d8c9f2;--text:#28203b;--muted:#76688e;
+    --accent:#7650c9;--accent2:#a17be8;--accent-dark:#56349e;--accent-soft:#eee6ff;
+    --mint:#c2a8f0;--danger:#c54866;--ok:#268b70;--soft:#f8f5ff;
+    --grad:linear-gradient(135deg,#56349e 0%,#7650c9 55%,#a17be8 100%);
+    --sh:0 4px 14px rgba(73,45,130,.10),0 12px 30px rgba(73,45,130,.08);
+    --sh-s:0 2px 7px rgba(73,45,130,.10);
+    background:var(--bg);color:var(--text)
+  }
+  body.adm-theme header.top{border-bottom-color:#d8c9f2}
+  body.adm-theme .welcome{background:linear-gradient(135deg,#38215f,#7650c9 65%,#a17be8)}
+  body.adm-theme .avatar{background:var(--grad)}
+  body.adm-theme #brand i{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  body.adm-theme .adm-badge{display:inline-block;background:#eee6ff;color:#56349e;border:1px solid #cdb9f1;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em}
+  #admSpaceChoice .modal{border:2px solid #d8c9f2}
+</style>
+
 </head>
 <body>
 
@@ -496,7 +515,7 @@ button,.btn,input,select,textarea{ max-width:100%; }
 
     <div id="t-dash">
       <div class="welcome">
-        <h2>Bonjour Leroy Théo</h2><p id="todayTxt"></p>
+        <h2 id="adminGreeting">Bonjour Leroy Théo</h2><p id="todayTxt"></p>
       </div>
       <div class="stats" id="stats"></div>
       <div class="actions" style="margin:0 0 22px;justify-content:flex-start">
@@ -584,10 +603,19 @@ button,.btn,input,select,textarea{ max-width:100%; }
     <div id="t-bordereau" class="hidden">
       <div class="card">
         <h3>Bordereau de colis</h3>
-        <p class="sub">Choisis simplement un client : son prénom s’affichera sur le bordereau.</p>
-        <label for="boClient">Choisir un client</label>
+        <p class="sub">Choisis un client enregistré ou utilise la saisie manuelle pour un cadeau, un anniversaire ou une autre mention.</p>
+        <label for="boClient">Choisir un client (facultatif)</label>
         <select id="boClient" onchange="fillBordereauClient()"></select>
-        <p id="boName" style="font-size:1.4rem;font-weight:700;margin:16px 0">Prénom du client</p>
+        <div class="actions"><button type="button" id="boManualBtn" onclick="toggleBordereauManual()">✍️ Marquer manuellement</button></div>
+        <div id="boManualBox" class="hidden">
+          <div class="row">
+            <div><label for="boFirst">Prénom</label><input id="boFirst" maxlength="50" placeholder="Prénom" oninput="fillBordereauClient()"></div>
+            <div><label for="boLast">Nom</label><input id="boLast" maxlength="60" placeholder="Nom" oninput="fillBordereauClient()"></div>
+          </div>
+          <label for="boMark">Mention personnalisée (facultatif)</label>
+          <input id="boMark" maxlength="80" placeholder="Cadeau, Anniversaire, À offrir…" oninput="fillBordereauClient()">
+        </div>
+        <p id="boName" style="font-size:1.4rem;font-weight:700;margin:16px 0">Prénom et nom du client</p>
         <div class="actions"><button class="primary" onclick="downloadBordereauPdf()">📦 Imprimer le bordereau (PDF)</button></div>
         <div class="msg" id="boMsg"></div>
       </div>
@@ -779,6 +807,18 @@ button,.btn,input,select,textarea{ max-width:100%; }
   </section>
 
   <footer>© <span id="yr"></span> 3D Nainbus · nainbus3d.vercel.app</footer>
+</div>
+
+<!-- Choix d’espace après connexion du compte ADM -->
+<div id="admSpaceChoice" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="admSpaceTitle">
+  <div class="modal" style="width:min(92vw,520px)">
+    <h3 id="admSpaceTitle">Compte administrateur</h3>
+    <p class="sub">Où souhaitez-vous vous connecter ? Les droits administrateur restent actifs dans les deux espaces.</p>
+    <div class="actions" style="display:grid;grid-template-columns:1fr 1fr">
+      <button class="primary" onclick="chooseAdmSpace('assistant')">🧑‍💼 Espace assistance</button>
+      <button class="primary" onclick="chooseAdmSpace('admin')">🛡️ Espace gérant</button>
+    </div>
+  </div>
 </div>
 
 <!-- Fenêtre « code » -->
@@ -1008,8 +1048,9 @@ async function submitModal(){
 /* ============ Connexion gérant ============ */
 let loginPw = null;
 function isLoggedIn(){ return sessionStorage.getItem("nb_admin") === "1" && (!ONLINE || !!sessionStorage.getItem("nb_token")); }
-function isAdmin(){ return isLoggedIn() && (!ONLINE || sessionStorage.getItem("nb_role") !== "assistant"); }
-function isAssistant(){ return isLoggedIn() && ONLINE && sessionStorage.getItem("nb_role") === "assistant"; }
+function isADM(){ return isLoggedIn() && String(sessionStorage.getItem("nb_username") || "").toLowerCase() === "administrateur"; }
+function isAdmin(){ return isLoggedIn() && (isADM() || !ONLINE || sessionStorage.getItem("nb_role") !== "assistant"); }
+function isAssistant(){ return isLoggedIn() && !isADM() && ONLINE && sessionStorage.getItem("nb_role") === "assistant"; }
 let selectedLoginMode = "admin";
 function selectLoginMode(mode){
   selectedLoginMode = mode === "assistant" ? "assistant" : "admin";
@@ -1041,13 +1082,28 @@ async function login(){
   let err = "";
   try{
     const u = $("lgUser").value.trim().toLowerCase();
+    const enteredPass = loginPw.value();
     if(ONLINE){
-      const j = await api("login", {user:u, pass:loginPw.value(), mode:selectedLoginMode}, false);
-      sessionStorage.setItem("nb_token", j.token); sessionStorage.setItem("nb_admin", "1"); sessionStorage.setItem("nb_role", j.role || "admin"); sessionStorage.setItem("nb_username", j.user || u);
+      const j = await api("login", {user:u, pass:enteredPass, mode:u === "administrateur" ? "admin" : selectedLoginMode}, false);
+      sessionStorage.setItem("nb_token", j.token); sessionStorage.setItem("nb_admin", "1"); sessionStorage.setItem("nb_role", j.role || "admin"); sessionStorage.setItem("nb_username", String(j.user || u).toLowerCase());
       if(j.role === "assistant") { const d = await api("assistantData"); DB.stock = d.stock || []; }
-      else await pullAll();
+      else {
+        await pullAll();
+        // À la première connexion d’un gérant, créer le compte ADM permanent avec le même mot de passe.
+        // La création passe par l’API authentifiée ; aucun mot de passe n’est inscrit dans le HTML.
+        if(u !== "administrateur") {
+          try {
+            const users = await api("usersList");
+            if(!(users.users || []).some(x => String(x.user || "").toLowerCase() === "administrateur")) {
+              await api("usersCreate", {user:"administrateur", pass:enteredPass, role:"admin"});
+            }
+          } catch(e) { /* La connexion principale reste utilisable si la création automatique n’est pas autorisée. */ }
+        }
+      }
     } else {
-      if((await sha("nb-id:" + u)) !== AUTH.u || !(await localPwOk(loginPw.value()))) throw Object.assign(new Error("x"), {status:401});
+      const passOK = await localPwOk(enteredPass);
+      const userOK = u === "administrateur" ? passOK : (await sha("nb-id:" + u)) === AUTH.u && passOK;
+      if(!userOK) throw Object.assign(new Error("x"), {status:401});
       sessionStorage.setItem("nb_admin", "1"); sessionStorage.setItem("nb_role", "admin"); sessionStorage.setItem("nb_username", u);
     }
   }catch(e){
@@ -1056,12 +1112,28 @@ async function login(){
   }
   await wait; $("loader").classList.add("hidden");
   if(err){ m.textContent = err; loginPw.clear(); return; }
-  initLogo(); go("admin");
+  initLogo();
+  if(String(sessionStorage.getItem("nb_username") || "").toLowerCase() === "administrateur") {
+    document.body.classList.add("adm-theme");
+    $("admSpaceChoice").classList.remove("hidden");
+  } else {
+    document.body.classList.remove("adm-theme");
+    go("admin");
+  }
+}
+function chooseAdmSpace(space){
+  $("admSpaceChoice").classList.add("hidden");
+  // ADM conserve les droits de gérant, même lorsqu’il choisit l’espace assistance.
+  sessionStorage.setItem("nb_adm_space", space === "assistant" ? "assistant" : "admin");
+  sessionStorage.setItem("nb_role", "admin");
+  curTab = space === "assistant" ? "requests" : "dash";
+  document.body.classList.add("adm-theme");
+  go("admin");
 }
 function logout(){
   if(ONLINE){ try{ api("logout").catch(() => {}); }catch(e){} }
   loadFor(800, 1300, () => {
-    sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token"); sessionStorage.removeItem("nb_role"); sessionStorage.removeItem("nb_username"); curTab = "dash";
+    sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token"); sessionStorage.removeItem("nb_role"); sessionStorage.removeItem("nb_username"); sessionStorage.removeItem("nb_adm_space"); document.body.classList.remove("adm-theme"); curTab = "dash";
     (ONLINE ? pullPublic() : Promise.resolve()).catch(() => {}).then(() => go("home"));
   }, "Déconnexion…");
 }
@@ -1069,7 +1141,7 @@ async function loadAccounts(){
   if(!ONLINE || !isAdmin()) return;
   try{
     const j = await api("usersList");
-    $("accountList").innerHTML = (j.users || []).map(u => `<div class="item"><div><b>${esc(u.user)}</b><small>${u.role === "admin" ? "Administrateur" : "Assistant"}</small></div><button class="small danger" onclick="deleteAccount('${esc(u.id)}')">Supprimer</button></div>`).join("") || '<p class="sub">Aucun compte supplémentaire pour le moment.</p>';
+    $("accountList").innerHTML = (j.users || []).map(u => `<div class="item"><div><b>${esc(u.user)}</b>${String(u.user||"").toLowerCase()==="administrateur" ? ' <span class="adm-badge">COMPTE PROTÉGÉ</span>' : ''}<small>${u.role === "admin" ? "Administrateur" : "Assistant"}</small></div>${String(u.user||"").toLowerCase()==="administrateur" ? '' : `<button class="small danger" onclick="deleteAccount('${esc(u.id)}')">Supprimer</button>`}</div>`).join("") || '<p class="sub">Aucun compte supplémentaire pour le moment.</p>';
   }catch(e){ $("accountMsg").className="msg err"; $("accountMsg").textContent=e.message || "Impossible de charger les comptes."; }
 }
 async function createAccount(){
@@ -1113,7 +1185,7 @@ function go(v){
   views.forEach(x => $("v-"+x).classList.toggle("hidden", x !== v));
   if(v === "client"){ renderPublicReviews(); clientTab("avis"); refreshPublic(); refreshMine(); }
   if(v === "adminLogin") prepLogin();
-  if(v === "admin"){ if(LOCKED.includes(curTab) && !passLock) curTab = "dash"; passLock = false; showTab(curTab); }
+  if(v === "admin"){ if(LOCKED.includes(curTab) && !passLock) curTab = "dash"; passLock = false; const g=$("adminGreeting"); if(g) g.textContent=isADM()?"Bonjour, Administrateur":"Bonjour Leroy Théo"; showTab(curTab); }
   if(v === "clients") renderClients();
   renderTop();
   window.scrollTo(0,0);
@@ -1125,7 +1197,7 @@ function renderTop(){
     const visibleNav = isAssistant() ? [["stock","Consulter le stock"],["tarifs","Tarifs"],["newrequest","Nouvelle demande"],["myrequests","Mes demandes"]] : [...NAV,["requests","Demandes"]];
     nav.innerHTML = visibleNav.map(([k,l]) =>
       `<button data-nav="${k}" class="${v==="admin" && curTab===k ? "active" : ""}">${l}${LOCKED.includes(k) ? ' <span class="lk">🔒</span>' : ""}${k==="messages" ? '<span class="bdg hidden" id="msgBadge"></span>' : ""}</button>`).join("");
-    t.innerHTML = (isAdmin() ? '<span class="syncdot" id="syncDot"></span><button class="clientbtn" title="Espace client" aria-label="Espace client" onclick="openClients()">' + USER_SVG + '<span>Espace client</span></button>' : '<span class="sub">Assistant · lecture seule</span>') +
+    t.innerHTML = (isAdmin() ? (isADM() ? '<span class="adm-badge">ADM · ' + (sessionStorage.getItem("nb_adm_space")==="assistant" ? 'ASSISTANCE' : 'GÉRANT') + '</span>' : '') + '<span class="syncdot" id="syncDot"></span><button class="clientbtn" title="Espace client" aria-label="Espace client" onclick="openClients()">' + USER_SVG + '<span>Espace client</span></button>' : '<span class="sub">Assistant · lecture seule</span>') +
                   '<button class="logoutbtn" onclick="logout()">Déconnexion</button>';
     if(isAdmin()){ setSync(syncState); updateBadge(); }
   } else {
@@ -1181,42 +1253,61 @@ function showTab(t){
   if(t === "requests") renderAdminRequests();
   renderTop();
 }
+let bordereauManual = false;
 function renderBordereauClients(){
   const sel = $("boClient"), current = sel.value;
-  sel.innerHTML = '<option value="">— Choisir un client —</option>' +
+  sel.innerHTML = '<option value="">— Aucun client sélectionné —</option>' +
     load(K.clients, []).map(c => `<option value="${esc(c.id)}">${esc(c.first)} ${esc(c.last)}</option>`).join("");
   sel.value = current;
   fillBordereauClient();
 }
-function fillBordereauClient(){
+function toggleBordereauManual(){
+  bordereauManual = !bordereauManual;
+  $("boManualBox").classList.toggle("hidden", !bordereauManual);
+  $("boManualBtn").textContent = bordereauManual ? "↩ Revenir au choix d’un client" : "✍️ Marquer manuellement";
+  if(bordereauManual) $("boClient").value = "";
+  else { $("boFirst").value = ""; $("boLast").value = ""; $("boMark").value = ""; }
+  fillBordereauClient();
+}
+function getBordereauDetails(){
+  if(bordereauManual) return {
+    name: [$("boFirst").value.trim(), $("boLast").value.trim()].filter(Boolean).join(" "),
+    mark: $("boMark").value.trim()
+  };
   const c = load(K.clients, []).find(x => x.id === $("boClient").value);
-  $("boName").textContent = c ? (c.first || "") : "Prénom du client";
+  return {name:c ? [c.first || "", c.last || ""].filter(Boolean).join(" ").trim() : "", mark:""};
+}
+function fillBordereauClient(){
+  const d = getBordereauDetails();
+  $("boName").textContent = [d.name,d.mark].filter(Boolean).join(" — ") || "Prénom et nom du client ou mention";
 }
 async function downloadBordereauPdf(){
-  const c = load(K.clients, []).find(x => x.id === $("boClient").value);
-  const first = c && c.first ? String(c.first).trim() : "";
+  const d = getBordereauDetails();
+  const label = [d.name,d.mark].filter(Boolean).join(" — ");
   const msg = $("boMsg");
-  if(!first){
-    msg.className = "msg err"; msg.textContent = "Choisis un client dans la liste."; return;
-  }
-  msg.className = "msg"; msg.textContent = "";
+  if(!label){ msg.className="msg err"; msg.textContent="Choisis un client ou saisis un nom ou une mention."; return; }
+  msg.className="msg"; msg.textContent="";
   try{
-    const cv = document.createElement("canvas");
-    cv.width = 1000; cv.height = 700;
-    const x = cv.getContext("2d");
-    x.fillStyle = "#fff"; x.fillRect(0,0,cv.width,cv.height);
-    x.strokeStyle = "#222"; x.lineWidth = 5; x.strokeRect(28,28,cv.width-56,cv.height-56);
-    x.textAlign = "center"; x.fillStyle = "#111";
-    if(logoImg.complete && logoImg.naturalWidth > 0){
-      const maxW = 520, maxH = 300, ratio = Math.min(maxW/logoImg.naturalWidth, maxH/logoImg.naturalHeight);
-      const w = logoImg.naturalWidth*ratio, h = logoImg.naturalHeight*ratio;
+    const cv = document.createElement("canvas"); cv.width=1000; cv.height=700;
+    const x=cv.getContext("2d");
+    x.fillStyle="#fff"; x.fillRect(0,0,cv.width,cv.height);
+    x.strokeStyle="#222"; x.lineWidth=5; x.strokeRect(28,28,cv.width-56,cv.height-56);
+    x.textAlign="center"; x.fillStyle="#111";
+    if(logoImg.complete && logoImg.naturalWidth>0){
+      const maxW=520,maxH=300,ratio=Math.min(maxW/logoImg.naturalWidth,maxH/logoImg.naturalHeight);
+      const w=logoImg.naturalWidth*ratio,h=logoImg.naturalHeight*ratio;
       x.drawImage(logoImg,(cv.width-w)/2,75,w,h);
-    } else { x.font = "bold 64px Arial"; x.fillText(SITE_NAME,cv.width/2,180); }
-    x.font = "bold 62px Arial"; x.fillText(first,cv.width/2,500);
-    const blob = await makePdf(cv);
+    }else{x.font="bold 64px Arial";x.fillText(SITE_NAME,cv.width/2,180);}
+    x.font="bold 48px Arial";
+    const words=label.split(/\s+/); let rows=[],row="";
+    for(const word of words){const test=row?row+" "+word:word;if(x.measureText(test).width>900&&row){rows.push(row);row=word;}else row=test;}
+    if(row)rows.push(row);
+    const startY=rows.length>1?450-(rows.length-1)*30:500;
+    rows.slice(0,4).forEach((r,i)=>x.fillText(r,cv.width/2,startY+i*60));
+    const blob=await makePdf(cv);
     showPdf(blob,"bordereau-3D-Nainbus.pdf",null);
-    msg.className = "msg ok"; msg.textContent = "Bordereau PDF téléchargé ✔";
-  }catch(e){ msg.className = "msg err"; msg.textContent = "Impossible de créer le PDF."; }
+    msg.className="msg ok";msg.textContent="Bordereau PDF téléchargé ✔";
+  }catch(e){msg.className="msg err";msg.textContent="Impossible de créer le PDF.";}
 }
 function renderCA(){
   const all = load(K.tickets, []), now = new Date(), ym = now.getFullYear() + "-" + now.getMonth();
@@ -1731,7 +1822,7 @@ async function submitRequest(e){
 }
 function requestCard(r,admin){
   const status={pending:"En attente",accepted:"Acceptée",rejected:"Refusée",completed:"Ticket enregistré",deleted:"Supprimée"}[r.status]||r.status;
-  return `<div class="item" style="align-items:flex-start"><div style="flex:1;min-width:0"><b>${esc(r.first)} ${esc(r.last)}</b><small>Objet : ${esc(r.object)} · Couleur : ${esc(r.color)}</small>${r.comment?`<small>Commentaire de la demande : ${esc(r.comment)}</small>`:""}${r.reason?`<small><b>Motif :</b> ${esc(r.reason)}</small>`:""}<small>Envoyée par : ${esc(r.by||"assistant")} · ${new Date(r.date).toLocaleString("fr-FR")}</small><span class="tag ${['accepted','completed'].includes(r.status)?'ok':(['rejected','deleted'].includes(r.status)?'warn':'')}">${status}</span></div>${admin&&r.status==='pending'?`<div class="actions" style="margin:0"><button class="small primary" onclick="decideRequest('${esc(r.id)}','accepted')">Accepter</button><button class="small danger" onclick="decideRequest('${esc(r.id)}','rejected')">Refuser</button></div>`:""}${admin&&r.status==='accepted'&&!r.ticketPrepared?`<button class="small" onclick="prepareRequestTicket('${esc(r.id)}')">Préparer le ticket</button>`:""}${admin&&!['completed','deleted'].includes(r.status)?`<button class="small danger" onclick="deleteRequest('${esc(r.id)}')">Supprimer cette demande</button>`:""}</div>`;
+  return `<div class="item" style="align-items:flex-start"><div style="flex:1;min-width:0"><b>${esc(r.first)} ${esc(r.last)}</b><small>Objet : ${esc(r.object)} · Couleur : ${esc(r.color)}</small>${r.comment?`<small>Commentaire de la demande : ${esc(r.comment)}</small>`:""}${r.reason?`<small><b>Motif :</b> ${esc(r.reason)}</small>`:""}<small>Envoyée par : ${esc(r.by||"assistant")} · ${new Date(r.date).toLocaleString("fr-FR")}</small><span class="tag ${['accepted','completed'].includes(r.status)?'ok':(['rejected','deleted'].includes(r.status)?'warn':'')}">${status}</span></div>${admin&&r.status==='pending'?`<div class="actions" style="margin:0"><button class="small primary" onclick="decideRequest('${esc(r.id)}','accepted')">Accepter</button><button class="small danger" onclick="decideRequest('${esc(r.id)}','rejected')">Refuser</button></div>`:""}${admin&&r.status==='accepted'&&!r.ticketPrepared?`<button class="small" onclick="prepareRequestTicket('${esc(r.id)}')">Préparer le ticket</button>`:""}${admin&&(isADM()||!['completed','deleted'].includes(r.status))?`<button class="small danger" onclick="deleteRequest('${esc(r.id)}')">${isADM()&&['completed','deleted'].includes(r.status)?'Supprimer cette ancienne demande':'Supprimer cette demande'}</button>`:""}</div>`;
 }
 async function renderMyRequests(){const el=$("myRequestList");if(!el)return;el.innerHTML='<p class="sub">Chargement…</p>';try{const j=await api("myRequests");el.innerHTML=(j.requests||[]).length?(j.requests||[]).slice().reverse().map(r=>requestCard(r,false)).join(""):'<p class="sub">Tu n’as encore envoyé aucune demande.</p>';}catch(e){el.innerHTML=`<p class="msg err">${esc(e.message||"Chargement impossible")}</p>`;}}
 async function renderAdminRequests(){const el=$("adminRequestList");if(!el)return;el.innerHTML='<p class="sub">Chargement…</p>';try{const j=await api("listRequests");el.innerHTML=(j.requests||[]).length?(j.requests||[]).slice().sort((a,b)=>b.date-a.date).map(r=>requestCard(r,true)).join(""):'<p class="sub">Aucune demande pour le moment.</p>';}catch(e){el.innerHTML=`<p class="msg err">${esc(e.message||"Chargement impossible")}</p>`;}}
@@ -1741,10 +1832,11 @@ async function decideRequest(id,status){
   try{await api("decideRequest",{id,status,reason:reason.trim()});await renderAdminRequests();toast(status==='accepted'?"Demande acceptée":"Demande refusée");}catch(e){toast(e.message||"Action impossible");}
 }
 async function deleteRequest(id){
-  const reason=prompt("Pourquoi voulez-vous supprimer cette demande ? (obligatoire)","")||"";
+  const reason=prompt(isADM() ? "Motif de suppression de cette demande (obligatoire) :" : "Pourquoi voulez-vous supprimer cette demande ? (obligatoire)","")||"";
   if(!reason.trim()){toast("Indique un motif pour supprimer la demande.");return;}
-  if(!confirm("Retirer cette demande de la liste active ? Le motif restera visible par l’assistant."))return;
-  try{await api("deleteRequest",{id,reason:reason.trim()});await renderAdminRequests();toast("Demande retirée de la liste active");}catch(e){toast(e.message||"Suppression impossible");}
+  if(!confirm(isADM() ? "Confirmer la suppression de cette demande, même si elle est terminée ?" : "Retirer cette demande de la liste active ? Le motif restera visible par l’assistant."))return;
+  try{await api("deleteRequest",{id,reason:reason.trim()});await renderAdminRequests();toast(isADM()?"Demande supprimée de la liste":"Demande retirée de la liste active");}
+  catch(e){toast(e.message||"Action impossible. Le serveur peut limiter la suppression des demandes terminées.");}
 }
 function prepareRequestTicket(id){
   api("getRequest",{id}).then(j=>{const r=j.request;if(!r)return;activeRequestId=id;curTab="ticket";go("admin");setTimeout(()=>{const item={name:r.object,price:"",color:r.color};items=[item];renderItems();drawCurrent();const note=$("requestTicketNote");if(note)note.textContent=`Demande acceptée pour ${r.first} ${r.last}. Ajoute le prix et enregistre le ticket. Le nom n’est pas ajouté aux fiches clients.`;toast("Objet prérempli dans le ticket");},100);}).catch(e=>toast(e.message||"Impossible de préparer le ticket"));
@@ -2259,7 +2351,14 @@ tickClock(); setInterval(tickClock, 1000);
   } else loadLocal();
   $("loader").classList.add("hidden");
   initLogo();
-  go(isLoggedIn() ? "admin" : "home");
+  if(isADM()) {
+    document.body.classList.add("adm-theme");
+    if(!sessionStorage.getItem("nb_adm_space")) $("admSpaceChoice").classList.remove("hidden");
+    else { curTab = sessionStorage.getItem("nb_adm_space")==="assistant" ? "requests" : "dash"; go("admin"); }
+  } else {
+    document.body.classList.remove("adm-theme");
+    go(isLoggedIn() ? "admin" : "home");
+  }
 })();
 </script>
 </body>
