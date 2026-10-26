@@ -388,6 +388,15 @@ button,.btn,input,select,textarea{ max-width:100%; }
   #admSpaceChoice .modal{border:2px solid #d8c9f2}
 </style>
 
+<style id="adm-assistant-space-style">
+body.adm-theme.adm-assistant-space{--bg:#edf5fb;--card:#fff;--border:#b8d8ed;--text:#163b56;--muted:#59788d;--accent:#237bb5;--accent-dark:#145783;--accent-soft:#dceffc;--soft:#f3f9fd;--grad:linear-gradient(135deg,#145783,#299bd1)}
+body.adm-theme.adm-assistant-space .welcome{background:linear-gradient(135deg,#145783,#299bd1)}
+body.adm-theme.adm-assistant-space #topNav button.active{background:linear-gradient(135deg,#145783,#299bd1)}
+body.adm-theme.adm-assistant-space .card{border-left:4px solid #b8d8ed}
+body.adm-theme.adm-assistant-space #t-newrequest .card{max-width:850px;margin:0 auto;border-top:4px solid #299bd1}
+body.adm-theme.adm-assistant-space #t-newrequest h3:before{content:"📝 "}
+body.adm-theme.adm-assistant-space .adm-badge{background:#dceffc;color:#145783;border-color:#b8d8ed}
+</style>
 </head>
 <body>
 
@@ -704,6 +713,14 @@ button,.btn,input,select,textarea{ max-width:100%; }
             <h3>Sauvegarde</h3>
             <p class="sub">Les données sont enregistrées automatiquement. Téléchargez de temps en temps une copie de secours (clients, tickets, avis, messages).</p>
             <div class="actions"><button class="primary" onclick="exportData()">⬇️ Télécharger une sauvegarde</button></div>
+            <hr class="sep">
+            <h3>🗄️ Archive des demandes</h3>
+            <p class="sub">Les demandes archivées ne sont plus visibles dans la liste active. Elles restent consultables ici.</p>
+            <div class="list" id="requestArchiveList"></div>
+            <hr class="sep">
+            <h3>🗄️ Archive 2 des demandes</h3>
+            <p class="sub">Archive secondaire pour ranger les anciennes demandes.</p>
+            <div class="list" id="requestArchive2List"></div>
             <hr class="sep">
             <label for="impFile">Restaurer une sauvegarde</label>
             <input type="file" id="impFile" accept="application/json,.json" onchange="importData(this)">
@@ -1050,7 +1067,7 @@ let loginPw = null;
 function isLoggedIn(){ return sessionStorage.getItem("nb_admin") === "1" && (!ONLINE || !!sessionStorage.getItem("nb_token")); }
 function isADM(){ return isLoggedIn() && String(sessionStorage.getItem("nb_username") || "").toLowerCase() === "administrateur"; }
 function isAdmin(){ return isLoggedIn() && (isADM() || !ONLINE || sessionStorage.getItem("nb_role") !== "assistant"); }
-function isAssistant(){ return isLoggedIn() && !isADM() && ONLINE && sessionStorage.getItem("nb_role") === "assistant"; }
+function isAssistant(){ return isLoggedIn() && ((isADM() && sessionStorage.getItem("nb_adm_space") === "assistant") || (!isADM() && ONLINE && sessionStorage.getItem("nb_role") === "assistant")); }
 let selectedLoginMode = "admin";
 function selectLoginMode(mode){
   selectedLoginMode = mode === "assistant" ? "assistant" : "admin";
@@ -1128,12 +1145,13 @@ function chooseAdmSpace(space){
   sessionStorage.setItem("nb_role", "admin");
   curTab = space === "assistant" ? "requests" : "dash";
   document.body.classList.add("adm-theme");
+  document.body.classList.toggle("adm-assistant-space", space === "assistant");
   go("admin");
 }
 function logout(){
   if(ONLINE){ try{ api("logout").catch(() => {}); }catch(e){} }
   loadFor(800, 1300, () => {
-    sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token"); sessionStorage.removeItem("nb_role"); sessionStorage.removeItem("nb_username"); sessionStorage.removeItem("nb_adm_space"); document.body.classList.remove("adm-theme"); curTab = "dash";
+    sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token"); sessionStorage.removeItem("nb_role"); sessionStorage.removeItem("nb_username"); sessionStorage.removeItem("nb_adm_space"); document.body.classList.remove("adm-theme","adm-assistant-space"); curTab = "dash";
     (ONLINE ? pullPublic() : Promise.resolve()).catch(() => {}).then(() => go("home"));
   }, "Déconnexion…");
 }
@@ -1180,7 +1198,7 @@ const ADMIN_TABS = ["dash","ticket","bordereau","stock","tarifs","avis","message
 function go(v){
   if(PROTECTED.includes(v) && !isLoggedIn()) v = "adminLogin";
   if(isAssistant() && v !== "admin" && v !== "home") v = "admin";
-  if(isAssistant() && !["stock","tarifs","newrequest","myrequests"].includes(curTab)) curTab = "stock";
+  if(isAssistant() && !["stock","tarifs","newrequest","myrequests",...(isADM()?["requests","reglages"]:[])].includes(curTab)) curTab = "stock";
   curView = v;
   views.forEach(x => $("v-"+x).classList.toggle("hidden", x !== v));
   if(v === "client"){ renderPublicReviews(); clientTab("avis"); refreshPublic(); refreshMine(); }
@@ -1194,7 +1212,7 @@ function renderTop(){
   const v = curView, nav = $("topNav"), t = $("topActions");
   if(isLoggedIn()){
     $("brand").classList.add("hidden");
-    const visibleNav = isAssistant() ? [["stock","Consulter le stock"],["tarifs","Tarifs"],["newrequest","Nouvelle demande"],["myrequests","Mes demandes"]] : [...NAV,["requests","Demandes"]];
+    const visibleNav = isAssistant() ? [["stock","Stock"],["tarifs","Tarifs"],["newrequest","Nouvelle demande"],["myrequests","Mes demandes"],...(isADM() ? [["requests","Demandes"],["reglages","Réglages / archives"]] : [])] : [...NAV,["requests","Demandes"]];
     nav.innerHTML = visibleNav.map(([k,l]) =>
       `<button data-nav="${k}" class="${v==="admin" && curTab===k ? "active" : ""}">${l}${LOCKED.includes(k) ? ' <span class="lk">🔒</span>' : ""}${k==="messages" ? '<span class="bdg hidden" id="msgBadge"></span>' : ""}</button>`).join("");
     t.innerHTML = (isAdmin() ? (isADM() ? '<span class="adm-badge">ADM · ' + (sessionStorage.getItem("nb_adm_space")==="assistant" ? 'ASSISTANCE' : 'GÉRANT') + '</span>' : '') + '<span class="syncdot" id="syncDot"></span><button class="clientbtn" title="Espace client" aria-label="Espace client" onclick="openClients()">' + USER_SVG + '<span>Espace client</span></button>' : '<span class="sub">Assistant · lecture seule</span>') +
@@ -1208,7 +1226,7 @@ function renderTop(){
 }
 $("topNav").addEventListener("click", e => { const b = e.target.closest("button[data-nav]"); if(b) navTo(b.dataset.nav); });
 function navTo(t){
-  if(isAssistant() && !["stock","tarifs","newrequest","myrequests"].includes(t)){ toast("Cette rubrique n’est pas accessible à l’assistance."); return; }
+  if(isAssistant() && !["stock","tarifs","newrequest","myrequests",...(isADM()?["requests","reglages"]:[])].includes(t)){ toast("Cette rubrique n’est pas accessible à l’assistance."); return; }
   if(!isAssistant() && ["newrequest","myrequests"].includes(t)){ return; }
   const run = () => { curTab = t; passLock = true; go("admin"); };
   if(LOCKED.includes(t) && !(curView === "admin" && curTab === t)) askCode(() => loadFor(1000, 1800, run));
@@ -1235,7 +1253,7 @@ function renderTicketSub(){
 $("ticketTabs").addEventListener("click", e => { const b = e.target.closest("button[data-ts]"); if(b) setTicketSub(b.dataset.ts); });
 
 function showTab(t){
-  if(isAssistant() && !["stock","tarifs","newrequest","myrequests"].includes(t)) t = "stock";
+  if(isAssistant() && !["stock","tarifs","newrequest","myrequests",...(isADM()?["requests","reglages"]:[])].includes(t)) t = "stock";
   if(!isAdmin() && !isAssistant()) return;
   curTab = t;
   if(t !== "ticket"){ searchUnlocked = false; ticketSub = "create"; }
@@ -1247,7 +1265,7 @@ function showTab(t){
   if(t === "tarifs") renderTariffs();
   if(t === "avis") renderAdminReviews();
   if(t === "messages") renderMessages();
-  if(t === "reglages") { renderCA(); if(isAdmin()) { $("accountManagerCard").classList.toggle("hidden", !ONLINE); loadAccounts(); } }
+  if(t === "reglages") { renderCA(); if(isAdmin()) { $("accountManagerCard").classList.toggle("hidden", !ONLINE); loadAccounts(); } renderRequestArchives(); }
   if(t === "newrequest") renderRequestForm();
   if(t === "myrequests") renderMyRequests();
   if(t === "requests") renderAdminRequests();
@@ -1817,15 +1835,46 @@ async function submitRequest(e){
   e.preventDefault(); const m=$("rqMsg");
   const data={first:$("rqFirst").value.trim(),last:$("rqLast").value.trim(),object:$("rqObject").value.trim(),color:$("rqColor").value,comment:$("rqComment").value.trim()};
   if(!data.first||!data.last||!data.object||!data.color){m.className="msg err";m.textContent="Remplis tous les champs obligatoires.";return;}
-  try{await api("createRequest",data); $("requestForm").reset(); renderRequestForm(); m.className="msg ok";m.textContent="Demande envoyée au gérant ✔"; toast("Demande envoyée");}
+  try{await api("createRequest",{...data, by:isADM() ? "administrateur (espace assistance)" : (sessionStorage.getItem("nb_username") || "assistant")}); $("requestForm").reset(); renderRequestForm(); m.className="msg ok";m.textContent="Demande envoyée au gérant ✔"; toast("Demande envoyée");}
   catch(err){m.className="msg err";m.textContent=err.message||"Envoi impossible.";}
 }
 function requestCard(r,admin){
   const status={pending:"En attente",accepted:"Acceptée",rejected:"Refusée",completed:"Ticket enregistré",deleted:"Supprimée"}[r.status]||r.status;
-  return `<div class="item" style="align-items:flex-start"><div style="flex:1;min-width:0"><b>${esc(r.first)} ${esc(r.last)}</b><small>Objet : ${esc(r.object)} · Couleur : ${esc(r.color)}</small>${r.comment?`<small>Commentaire de la demande : ${esc(r.comment)}</small>`:""}${r.reason?`<small><b>Motif :</b> ${esc(r.reason)}</small>`:""}<small>Envoyée par : ${esc(r.by||"assistant")} · ${new Date(r.date).toLocaleString("fr-FR")}</small><span class="tag ${['accepted','completed'].includes(r.status)?'ok':(['rejected','deleted'].includes(r.status)?'warn':'')}">${status}</span></div>${admin&&r.status==='pending'?`<div class="actions" style="margin:0"><button class="small primary" onclick="decideRequest('${esc(r.id)}','accepted')">Accepter</button><button class="small danger" onclick="decideRequest('${esc(r.id)}','rejected')">Refuser</button></div>`:""}${admin&&r.status==='accepted'&&!r.ticketPrepared?`<button class="small" onclick="prepareRequestTicket('${esc(r.id)}')">Préparer le ticket</button>`:""}${admin&&(isADM()||!['completed','deleted'].includes(r.status))?`<button class="small danger" onclick="deleteRequest('${esc(r.id)}')">${isADM()&&['completed','deleted'].includes(r.status)?'Supprimer cette ancienne demande':'Supprimer cette demande'}</button>`:""}</div>`;
+  return `<div class="item" style="align-items:flex-start"><div style="flex:1;min-width:0"><b>${esc(r.first)} ${esc(r.last)}</b><small>Objet : ${esc(r.object)} · Couleur : ${esc(r.color)}</small>${r.comment?`<small>Commentaire de la demande : ${esc(r.comment)}</small>`:""}${r.reason?`<small><b>Motif :</b> ${esc(r.reason)}</small>`:""}<small>Envoyée par : ${esc(r.by||"assistant")} · ${new Date(r.date).toLocaleString("fr-FR")}</small><span class="tag ${['accepted','completed'].includes(r.status)?'ok':(['rejected','deleted'].includes(r.status)?'warn':'')}">${status}</span></div>${admin&&r.status==='pending'?`<div class="actions" style="margin:0"><button class="small primary" onclick="decideRequest('${esc(r.id)}','accepted')">Accepter</button><button class="small danger" onclick="decideRequest('${esc(r.id)}','rejected')">Refuser</button></div>`:""}${admin&&r.status==='accepted'&&!r.ticketPrepared?`<button class="small" onclick="prepareRequestTicket('${esc(r.id)}')">Préparer le ticket</button>`:""}${admin&&(isADM()||!['completed','deleted'].includes(r.status))?`<button class="small danger" onclick="deleteRequest('${esc(r.id)}')">${isADM()&&['completed','deleted'].includes(r.status)?'Archiver cette demande':'Archiver cette demande'}</button>`:""}</div>`;
 }
 async function renderMyRequests(){const el=$("myRequestList");if(!el)return;el.innerHTML='<p class="sub">Chargement…</p>';try{const j=await api("myRequests");el.innerHTML=(j.requests||[]).length?(j.requests||[]).slice().reverse().map(r=>requestCard(r,false)).join(""):'<p class="sub">Tu n’as encore envoyé aucune demande.</p>';}catch(e){el.innerHTML=`<p class="msg err">${esc(e.message||"Chargement impossible")}</p>`;}}
-async function renderAdminRequests(){const el=$("adminRequestList");if(!el)return;el.innerHTML='<p class="sub">Chargement…</p>';try{const j=await api("listRequests");el.innerHTML=(j.requests||[]).length?(j.requests||[]).slice().sort((a,b)=>b.date-a.date).map(r=>requestCard(r,true)).join(""):'<p class="sub">Aucune demande pour le moment.</p>';}catch(e){el.innerHTML=`<p class="msg err">${esc(e.message||"Chargement impossible")}</p>`;}}
+const ARCHIVE1_KEY = "nb3_request_archive_1";
+const ARCHIVE2_KEY = "nb3_request_archive_2";
+function archiveIds(key=ARCHIVE1_KEY){ try{return JSON.parse(localStorage.getItem(key)||"[]");}catch(e){return [];} }
+function setArchiveIds(key,ids){ try{localStorage.setItem(key,JSON.stringify([...new Set(ids.map(String))]));}catch(e){} }
+async function fetchAllRequests(){ const j=await api("listRequests"); return j.requests||[]; }
+async function renderAdminRequests(){
+  const el=$("adminRequestList"); if(!el)return;
+  el.innerHTML='<p class="sub">Chargement…</p>';
+  try{
+    const all=await fetchAllRequests(), hidden=new Set(archiveIds().concat(archiveIds(ARCHIVE2_KEY)).map(String));
+    const active=all.filter(r=>r.status!=="deleted"&&!hidden.has(String(r.id)));
+    el.innerHTML=active.length?active.slice().sort((a,b)=>b.date-a.date).map(r=>requestCard(r,true)).join(""):'<p class="sub">Aucune demande active. Les demandes archivées sont consultables dans Réglages.</p>';
+  }catch(e){el.innerHTML=`<p class="msg err">${esc(e.message||"Chargement impossible")}</p>`;}
+}
+async function renderRequestArchives(){
+  const a1=$("requestArchiveList"),a2=$("requestArchive2List"); if(!a1||!a2)return;
+  a1.innerHTML=a2.innerHTML='<p class="sub">Chargement des archives…</p>';
+  try{
+    const all=await fetchAllRequests(), ids1=new Set(archiveIds().map(String)), ids2=new Set(archiveIds(ARCHIVE2_KEY).map(String));
+    const archived1=all.filter(r=>(r.status==="deleted"||ids1.has(String(r.id)))&&!ids2.has(String(r.id)));
+    const archived2=all.filter(r=>ids2.has(String(r.id)));
+    const archiveCard=(r,second)=>`<div class="item" style="align-items:flex-start"><div style="flex:1;min-width:0"><b>${esc(r.first||"")} ${esc(r.last||"")}</b><small>Objet : ${esc(r.object||"")} · Couleur : ${esc(r.color||"")}</small><small>Statut : ${esc(r.status||"inconnu")} · ${r.date?new Date(r.date).toLocaleString("fr-FR"):""}</small>${r.reason?`<small>Motif : ${esc(r.reason)}</small>`:""}</div><div class="actions" style="margin:0"><button class="small" onclick="moveRequestArchive('${esc(r.id)}',${second?'1':'2'})">${second?'Remettre dans Archive 1':'Déplacer vers Archive 2'}</button></div></div>`;
+    a1.innerHTML=archived1.length?archived1.slice().sort((a,b)=>b.date-a.date).map(r=>archiveCard(r,false)).join(""):'<p class="sub">Aucune demande dans Archive 1.</p>';
+    a2.innerHTML=archived2.length?archived2.slice().sort((a,b)=>b.date-a.date).map(r=>archiveCard(r,true)).join(""):'<p class="sub">Aucune demande dans Archive 2.</p>';
+  }catch(e){a1.innerHTML=a2.innerHTML=`<p class="msg err">${esc(e.message||"Impossible de charger les archives")}</p>`;}
+}
+function moveRequestArchive(id,target){
+  const one=archiveIds(),two=archiveIds(ARCHIVE2_KEY),key=String(id);
+  if(target===2){setArchiveIds(ARCHIVE1_KEY,one.concat(key));setArchiveIds(ARCHIVE2_KEY,two.concat(key));}
+  else {setArchiveIds(ARCHIVE2_KEY,two.filter(x=>String(x)!==key));setArchiveIds(ARCHIVE1_KEY,one.concat(key));}
+  renderAdminRequests();renderRequestArchives();toast(target===2?"Demande déplacée vers Archive 2":"Demande replacée dans Archive 1");
+}
 async function decideRequest(id,status){
   let reason="";
   if(status==='rejected'){reason=prompt("Pourquoi refusez-vous cette demande ? (obligatoire)","")||"";if(!reason.trim()){toast("Indique un motif pour refuser la demande.");return;}}
@@ -1835,7 +1884,7 @@ async function deleteRequest(id){
   const reason=prompt(isADM() ? "Motif de suppression de cette demande (obligatoire) :" : "Pourquoi voulez-vous supprimer cette demande ? (obligatoire)","")||"";
   if(!reason.trim()){toast("Indique un motif pour supprimer la demande.");return;}
   if(!confirm(isADM() ? "Confirmer la suppression de cette demande, même si elle est terminée ?" : "Retirer cette demande de la liste active ? Le motif restera visible par l’assistant."))return;
-  try{await api("deleteRequest",{id,reason:reason.trim()});await renderAdminRequests();toast(isADM()?"Demande supprimée de la liste":"Demande retirée de la liste active");}
+  try{await api("deleteRequest",{id,reason:reason.trim()});setArchiveIds(ARCHIVE1_KEY,archiveIds().concat(String(id)));await renderAdminRequests();await renderRequestArchives();toast("Demande archivée : elle ne s’affiche plus dans les demandes actives.");}
   catch(e){toast(e.message||"Action impossible. Le serveur peut limiter la suppression des demandes terminées.");}
 }
 function prepareRequestTicket(id){
@@ -2353,10 +2402,11 @@ tickClock(); setInterval(tickClock, 1000);
   initLogo();
   if(isADM()) {
     document.body.classList.add("adm-theme");
+    document.body.classList.toggle("adm-assistant-space", sessionStorage.getItem("nb_adm_space")==="assistant");
     if(!sessionStorage.getItem("nb_adm_space")) $("admSpaceChoice").classList.remove("hidden");
     else { curTab = sessionStorage.getItem("nb_adm_space")==="assistant" ? "requests" : "dash"; go("admin"); }
   } else {
-    document.body.classList.remove("adm-theme");
+    document.body.classList.remove("adm-theme","adm-assistant-space");
     go(isLoggedIn() ? "admin" : "home");
   }
 })();
