@@ -32,7 +32,8 @@ const ADMIN_KEYS = [
   "logo",
   "reviews",
   "messages",
-  "requests"
+  "requests",
+  "tariffs"
 ];
 
 const sha = s =>
@@ -206,7 +207,8 @@ module.exports = async (req, res) => {
     if (req.method === "GET") {
       return res.status(200).json({
         reviews: (await getK("reviews", [])) || [],
-        logo: await getK("logo")
+        logo: await getK("logo"),
+        tariffs: await getK("tariffs")
       });
     }
 
@@ -382,7 +384,8 @@ module.exports = async (req, res) => {
       }
 
       return res.status(200).json({
-        stock: await getK("stock", null)
+        stock: await getK("stock", null),
+        tariffs: await getK("tariffs", null)
       });
     }
 
@@ -520,7 +523,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // MARQUER UNE DEMANDE COMME TERMINÉE APRÈS L'ENREGISTREMENT DU TICKET
+    // MARQUER UNE DEMANDE COMME TERMINÉE
     if (a === "completeRequest") {
       const requests = (await getK("requests", [])) || [];
       const request = requests.find(x => x.id === b.id);
@@ -593,12 +596,17 @@ module.exports = async (req, res) => {
       const out = {};
 
       for (const k of ADMIN_KEYS) {
-        out[k] = await getK(
+        const value = await getK(
           k,
           ["clients", "tickets", "reviews", "messages", "requests"].includes(k)
             ? []
             : null
         );
+
+        // Ne pas écraser les tarifs locaux s'il n'y a rien dans le cloud.
+        if (k === "tariffs" && value == null) continue;
+
+        out[k] = value;
       }
 
       return res.status(200).json(out);
