@@ -397,6 +397,94 @@ body.adm-theme.adm-assistant-space #t-newrequest .card{max-width:850px;margin:0 
 body.adm-theme.adm-assistant-space #t-newrequest h3:before{content:"📝 "}
 body.adm-theme.adm-assistant-space .adm-badge{background:#dceffc;color:#145783;border-color:#b8d8ed}
 </style>
+
+<style id="nainbus-display-manager">
+/* Affichage par défaut : interface classique, lisible et carrée */
+body:not(.display-modern):not(.display-green){
+  --bg:#dce3eb;--card:#f3f6f9;--border:#aebdca;--text:#233447;--muted:#5d7083;
+  --accent:#315f91;--accent2:#315f91;--accent-dark:#21476f;--accent-soft:#dbe7f3;
+  --mint:#8fb5d7;--danger:#b94b4b;--ok:#3d7b68;--soft:#e8eef4;--gold:#b98a25;
+  --r:4px;--grad:linear-gradient(180deg,#426f9f 0%,#2d5682 100%);
+  --sh:0 1px 3px rgba(29,48,69,.14);--sh-s:0 1px 2px rgba(29,48,69,.10);
+  background:#dce3eb;color:#233447;font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:auto
+}
+body:not(.display-modern):not(.display-green) header.top{background:#e8edf2;border-bottom:1px solid #aebdca;backdrop-filter:none;box-shadow:0 1px 3px rgba(0,0,0,.14)}
+body:not(.display-modern):not(.display-green) .card,
+body:not(.display-modern):not(.display-green) .tile,
+body:not(.display-modern):not(.display-green) .hero{background:#f0f4f7;border:1px solid #b9c6d1;border-radius:4px;box-shadow:0 1px 3px rgba(29,48,69,.12)}
+body:not(.display-modern):not(.display-green) button,
+body:not(.display-modern):not(.display-green) .btn{border-radius:4px;box-shadow:none}
+body:not(.display-modern):not(.display-green) button.primary,
+body:not(.display-modern):not(.display-green) .btn.primary{background:#315f91;border:1px solid #21476f;box-shadow:none}
+body:not(.display-modern):not(.display-green) .welcome{background:#315f91;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+body:not(.display-modern):not(.display-green) .item{background:#e8eef4;border:1px solid #bdc9d3;border-radius:3px}
+body:not(.display-modern):not(.display-green) .avatar{border-radius:3px;background:#315f91;box-shadow:none}
+body:not(.display-modern):not(.display-green) input,
+body:not(.display-modern):not(.display-green) textarea,
+body:not(.display-modern):not(.display-green) select{border-radius:3px}
+body.display-green{
+  --bg:#edf1ef;--card:#f7faf8;--border:#b9c9c2;--text:#293b35;--muted:#65766f;
+  --accent:#26765e;--accent2:#26765e;--accent-dark:#175a45;--accent-soft:#dcebe4;
+  --mint:#9bc9b7;--danger:#b94b4b;--ok:#26765e;--soft:#e8efeb;--gold:#b98a25;
+  --r:4px;--grad:linear-gradient(180deg,#34866c,#1d654e);
+  --sh:0 1px 3px rgba(30,55,45,.12);--sh-s:0 1px 2px rgba(30,55,45,.10);
+  background:#edf1ef;color:#293b35;font-family:Arial,Helvetica,sans-serif
+}
+body.display-green header.top{background:#f4f7f5;backdrop-filter:none;border-bottom:1px solid #b9c9c2}
+body.display-green .card,body.display-green .tile,body.display-green .hero{border:1px solid #c4d1cb;border-radius:4px;box-shadow:0 1px 3px rgba(30,55,45,.1)}
+body.display-green button,body.display-green .btn{border-radius:4px;box-shadow:none}
+body.display-green button.primary,body.display-green .btn.primary{background:#26765e;border-color:#175a45;box-shadow:none}
+body.display-green .welcome{background:#26765e;border-radius:4px;box-shadow:none}
+body.display-green .item{border:1px solid #c4d1cb;border-radius:3px}
+body.display-green .avatar{border-radius:3px;background:#26765e;box-shadow:none}
+body.display-modern{--bg:#eaf1f5;--card:#fff;--border:#c9e0e2;--text:#173f55;--muted:#60798a;--accent:#278f91;--accent2:#49b9b9;--accent-dark:#176f78;--accent-soft:#dff3f2;--mint:#8ed7d3;--danger:#c94f60;--ok:#258d79;--soft:#f4f9fa;--gold:#d6a33c;--r:16px;--grad:linear-gradient(135deg,#2b9296,#52c2c0);--sh:0 4px 12px rgba(30,91,109,.07),0 12px 30px rgba(30,91,109,.08);--sh-s:0 2px 7px rgba(30,91,109,.09);background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif}
+body.display-modern header.top{background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+body.display-modern .card,body.display-modern .tile{border:1px solid var(--border);border-radius:18px;box-shadow:var(--sh-s)}
+body.display-modern button,body.display-modern .btn{border-radius:12px}
+body.display-modern button.primary,body.display-modern .btn.primary{background:var(--grad);border-color:transparent}
+body.display-modern .welcome{background:var(--grad);border-radius:18px}
+.display-settings-card{border-top:4px solid var(--accent)!important}
+.display-choice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}
+.display-choice{display:flex;flex-direction:column;gap:7px;margin:0;padding:12px;border:1px solid var(--border);background:var(--soft);border-radius:5px;cursor:pointer;color:var(--text)}
+.display-choice input{width:18px;min-height:18px;accent-color:var(--accent);margin:0}
+.display-choice strong{font-size:14px}
+.display-choice>small{font-size:12px;font-weight:400;color:var(--muted)}
+.display-preview{height:92px;border:1px solid #aebdca;padding:9px;display:flex;flex-direction:column;gap:6px;font-size:11px}
+.display-preview b{padding:5px;background:#315f91;color:#fff}
+.display-preview i{font-style:normal;padding:7px;background:#dbe7f3;color:#233447}
+.display-preview small{font-size:9px;color:#526579}
+.green-preview{background:#edf1ef;border-color:#b9c9c2}.green-preview b{background:#26765e}.green-preview i{background:#dcebe4}
+.modern-preview{background:#eaf1f5;border-color:#c9e0e2;border-radius:10px}.modern-preview b{background:#278f91;border-radius:6px}.modern-preview i{background:#dff3f2;border-radius:6px}
+.display-choice:has(input:checked){outline:2px solid var(--accent);background:var(--accent-soft)}
+@media(max-width:760px){
+  .display-choice-grid{grid-template-columns:1fr;gap:9px}
+  .display-choice{display:grid;grid-template-columns:20px minmax(0,1fr);align-items:center;column-gap:9px;padding:10px}
+  .display-choice input{grid-column:1;grid-row:1/4}
+  .display-preview{grid-column:2;grid-row:1/4;height:78px}
+  .display-choice strong,.display-choice>small{grid-column:2}
+  header.top{padding:8px 10px 7px;gap:7px}
+  #topNav{padding:3px 0 6px;gap:5px;scroll-snap-type:x proximity}
+  #topNav button{min-height:42px;padding:9px 12px;font-size:13px;scroll-snap-align:start}
+  #topActions{gap:5px;flex-wrap:nowrap}
+  #topActions button{min-height:40px}
+  .wrap{padding:12px 10px 28px}
+  .pagehead h2{font-size:21px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .tile{padding:12px}
+  .tile b{font-size:20px}
+  .card{min-width:0}
+  .actions{gap:8px}
+  .actions button,.actions .btn{min-height:44px}
+}
+@media(max-width:390px){
+  .brand{font-size:15px}
+  #topActions .logoutbtn{padding:7px 8px;font-size:11px}
+  #topNav button{font-size:12px;padding:8px 10px}
+  .wrap{padding-left:8px;padding-right:8px}
+  .pagehead h2{font-size:19px}
+}
+</style>
+
 </head>
 <body>
 
@@ -419,14 +507,19 @@ body.adm-theme.adm-assistant-space .adm-badge{background:#dceffc;color:#145783;b
     <div class="mode-main">
       <div class="mode-brand"><img id="logoBig" class="logo-big" alt="Logo 3D Nainbus"><div><h2>3D Nainbus</h2><p id="modeSubtitle">Espace gérant</p></div></div>
       <div class="mode-login">
+        <div class="login-heading">
+          <span class="login-eyebrow">ACCÈS SÉCURISÉ</span>
+          <h3>Connexion à votre espace</h3>
+          <p>Renseignez vos identifiants pour accéder à votre tableau de bord.</p>
+        </div>
         <label for="homeLgUser">Identifiant</label>
         <input id="homeLgUser" placeholder="Votre identifiant" autocomplete="username" autocapitalize="none" spellcheck="false" onkeydown="if(event.key==='Enter'){$('homeLgPass').focus()}">
         <label for="homeLgPass">Mot de passe</label>
         <input id="homeLgPass" type="password" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
         <div class="msg err" id="homeLoginMsg"></div>
         <button class="primary mode-submit" onclick="loginFromHome()">Se connecter</button>
-        <p class="mode-hint">Choisissez votre mode, puis saisissez vos identifiants.</p>
-        <p class="entry-note">En cas de problème, ou pour contacter l’espace gérant, merci de passer par l’espace compte client.</p>
+        <p class="mode-hint">Connexion réservée aux comptes autorisés.</p>
+        <p class="entry-note">Besoin d’aide ? Consultez l’espace client pour contacter le gérant.</p>
       </div>
     </div>
   </section>
@@ -682,6 +775,28 @@ body.adm-theme.adm-assistant-space .adm-badge{background:#dceffc;color:#145783;b
     </div>
 
     <div id="t-reglages" class="hidden">
+      <div class="card display-settings-card" style="margin-bottom:22px">
+        <h3>🖥️ Gérer l’affichage</h3>
+        <p class="sub">Choisis l’apparence de ce compte. Chaque identifiant conserve son propre choix sur cet appareil.</p>
+        <div class="display-choice-grid">
+          <label class="display-choice">
+            <input type="radio" name="displayTheme" value="classic" onchange="setDisplayTheme('classic')">
+            <span class="display-preview classic-preview"><b>3D Nainbus</b><i>Tableau de bord</i><small>Style classique · bleu ardoise</small></span>
+            <strong>Classique 2019</strong><small>Rectangles, bordures et couleurs sobres (par défaut).</small>
+          </label>
+          <label class="display-choice">
+            <input type="radio" name="displayTheme" value="green" onchange="setDisplayTheme('green')">
+            <span class="display-preview green-preview"><b>3D Nainbus</b><i>Tableau de bord</i><small>Style simple · vert</small></span>
+            <strong>Classique vert</strong><small>Une interface traditionnelle avec une touche verte.</small>
+          </label>
+          <label class="display-choice">
+            <input type="radio" name="displayTheme" value="modern" onchange="setDisplayTheme('modern')">
+            <span class="display-preview modern-preview"><b>3D Nainbus</b><i>Tableau de bord</i><small>Style moderne · turquoise</small></span>
+            <strong>Moderne</strong><small>Cartes arrondies et présentation plus récente.</small>
+          </label>
+        </div>
+        <p class="msg" id="displayThemeMsg" role="status">Affichage classique activé par défaut.</p>
+      </div>
       <div class="card" style="margin-bottom:22px"><h3>Chiffre d'affaires</h3><div class="stats" id="caStats" style="margin:14px 0 0"></div></div>
       <div class="grid2">
         <div class="stack">
@@ -1130,6 +1245,7 @@ async function login(){
   await wait; $("loader").classList.add("hidden");
   if(err){ m.textContent = err; loginPw.clear(); return; }
   initLogo();
+  loadDisplayTheme();
   if(String(sessionStorage.getItem("nb_username") || "").toLowerCase() === "administrateur") {
     document.body.classList.add("adm-theme");
     $("admSpaceChoice").classList.remove("hidden");
@@ -1184,6 +1300,34 @@ async function changePw(){
     $("npw").value = ""; m.className = "msg ok"; m.textContent = "Mot de passe modifié ✔";
   }
   catch(e){ m.className = "msg err"; m.textContent = e.message || "Impossible de modifier le mot de passe."; }
+}
+
+/* ============ Affichage par compte ============ */
+const DISPLAY_THEMES = ["classic","green","modern"];
+function displayAccountKey(){
+  const user = String(sessionStorage.getItem("nb_username") || "visiteur").trim().toLowerCase();
+  return "nb3_display_theme_" + (user || "visiteur");
+}
+function applyDisplayTheme(theme){
+  const chosen = DISPLAY_THEMES.includes(theme) ? theme : "classic";
+  document.body.classList.remove("display-green","display-modern");
+  if(chosen === "green") document.body.classList.add("display-green");
+  if(chosen === "modern") document.body.classList.add("display-modern");
+  document.querySelectorAll('input[name="displayTheme"]').forEach(input => input.checked = input.value === chosen);
+  return chosen;
+}
+function currentDisplayTheme(){
+  try{return localStorage.getItem(displayAccountKey()) || "classic";}catch(e){return "classic";}
+}
+function loadDisplayTheme(){
+  applyDisplayTheme(currentDisplayTheme());
+}
+function setDisplayTheme(theme){
+  if(!DISPLAY_THEMES.includes(theme)) theme = "classic";
+  try{localStorage.setItem(displayAccountKey(),theme);}catch(e){}
+  applyDisplayTheme(theme);
+  const msg = $("displayThemeMsg");
+  if(msg){msg.className="msg ok";msg.textContent = theme === "classic" ? "Affichage classique 2019 enregistré pour ce compte ✔" : theme === "green" ? "Affichage classique vert enregistré pour ce compte ✔" : "Affichage moderne enregistré pour ce compte ✔";}
 }
 
 /* ============ Navigation ============ */
@@ -2400,6 +2544,7 @@ tickClock(); setInterval(tickClock, 1000);
   } else loadLocal();
   $("loader").classList.add("hidden");
   initLogo();
+  loadDisplayTheme();
   if(isADM()) {
     document.body.classList.add("adm-theme");
     document.body.classList.toggle("adm-assistant-space", sessionStorage.getItem("nb_adm_space")==="assistant");
@@ -2411,5 +2556,219 @@ tickClock(); setInterval(tickClock, 1000);
   }
 })();
 </script>
+
+<style id="nainbus-professional-login">
+/* Écran de connexion : finition professionnelle, tout en gardant le style classique */
+body:has(#v-home:not(.hidden)) .wrap{
+  max-width:1040px;
+  padding:34px 22px 52px;
+}
+.mode-shell{
+  display:flex;
+  min-height:570px;
+  overflow:hidden;
+  border:1px solid #aebdca;
+  border-radius:5px;
+  background:#edf2f6;
+  box-shadow:0 8px 28px rgba(27,48,72,.13);
+}
+.mode-sidebar{
+  width:190px;
+  flex:0 0 190px;
+  padding:22px 15px;
+  display:flex;
+  flex-direction:column;
+  gap:11px;
+  background:#e1e8ef;
+  border-right:1px solid #b8c5d1;
+}
+.mode-sidebar::before{
+  content:"VOTRE ESPACE";
+  display:block;
+  padding:4px 8px 12px;
+  color:#62778b;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:1.25px;
+}
+.mode-sidebar .entry-mode{
+  min-height:82px;
+  display:flex;
+  flex-direction:row;
+  justify-content:flex-start;
+  gap:12px;
+  padding:12px;
+  text-align:left;
+  border:1px solid #c0ccd7;
+  border-radius:4px;
+  background:#f5f7f9;
+  color:#314b64;
+  font-size:13px;
+  font-weight:700;
+}
+.mode-sidebar .entry-mode.active{
+  background:#315f91;
+  color:#fff;
+  border-color:#21476f;
+  box-shadow:inset 3px 0 0 #9fc1e2;
+}
+.mode-sidebar .entry-mode:hover:not(.active){
+  background:#fff;
+  border-color:#8fa8bf;
+}
+.entry-icon{
+  width:30px;
+  flex:0 0 30px;
+  display:grid;
+  place-items:center;
+  font-size:22px;
+}
+.mode-main{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:48px clamp(24px,6vw,76px);
+  background:#f7f9fb;
+}
+.mode-brand{
+  gap:17px;
+  margin:0 auto 34px;
+  width:100%;
+  max-width:550px;
+  padding-bottom:23px;
+  border-bottom:1px solid #d5dee6;
+}
+.mode-brand .logo-big{
+  width:66px;
+  height:66px;
+  padding:7px;
+  background:#fff;
+  border:1px solid #d2dce5;
+  border-radius:4px;
+}
+.mode-brand h2{
+  color:#203f5d;
+  font-family:Arial,sans-serif;
+  font-size:32px;
+  font-weight:800;
+  letter-spacing:-.6px;
+}
+.mode-brand p{
+  margin-top:5px;
+  color:#687d91;
+  font-size:14px;
+}
+.mode-login{
+  width:100%;
+  max-width:550px;
+}
+.login-heading{margin:0 0 25px}
+.login-eyebrow{
+  display:inline-block;
+  margin-bottom:9px;
+  color:#315f91;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:1.5px;
+}
+.login-heading h3{
+  margin:0 0 7px;
+  color:#243d56;
+  font-size:23px;
+  font-weight:750;
+}
+.login-heading p{
+  margin:0;
+  color:#6c7d8d;
+  font-size:13px;
+  line-height:1.5;
+}
+.mode-login label{
+  margin:0 0 7px;
+  color:#354e66;
+  font-size:13px;
+  font-weight:700;
+}
+.mode-login input{
+  height:48px;
+  margin-bottom:18px;
+  padding:12px 14px;
+  border:1px solid #b9c7d3;
+  border-radius:4px;
+  background:#fff;
+  color:#263c52;
+  font-size:15px;
+}
+.mode-login input:focus{
+  border-color:#4779a8;
+  box-shadow:0 0 0 3px rgba(49,95,145,.12);
+}
+.mode-submit{
+  width:100%;
+  height:48px;
+  margin:5px 0 0;
+  border:1px solid #21476f!important;
+  border-radius:4px!important;
+  background:#315f91!important;
+  color:#fff!important;
+  font-size:14px;
+  font-weight:750;
+  letter-spacing:.2px;
+}
+.mode-submit:hover{
+  background:#21476f!important;
+}
+.mode-hint{
+  margin:14px 0 0;
+  color:#718194;
+  font-size:12px;
+  text-align:center;
+}
+.mode-login .entry-note{
+  margin-top:23px;
+  padding-top:15px;
+  border-top:1px solid #dce3e9;
+  color:#718194;
+  font-size:12px;
+  line-height:1.5;
+}
+#homeLoginMsg{margin:0 0 10px}
+@media(max-width:700px){
+  body:has(#v-home:not(.hidden)) .wrap{padding:14px 9px 28px}
+  .mode-shell{min-height:0;flex-direction:column}
+  .mode-sidebar{
+    width:auto;
+    flex:0 0 auto;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:7px;
+    padding:12px;
+    border-right:0;
+    border-bottom:1px solid #b8c5d1;
+  }
+  .mode-sidebar::before{grid-column:1/-1;padding:1px 3px 5px}
+  .mode-sidebar .entry-mode{
+    min-height:66px;
+    flex-direction:column;
+    justify-content:center;
+    gap:4px;
+    padding:7px 4px;
+    text-align:center;
+    font-size:11px;
+  }
+  .entry-icon{width:auto;flex:0 0 auto;font-size:19px}
+  .mode-main{padding:25px 19px 27px}
+  .mode-brand{margin-bottom:25px;padding-bottom:18px}
+  .mode-brand .logo-big{width:55px;height:55px}
+  .mode-brand h2{font-size:25px}
+  .login-heading h3{font-size:20px}
+}
+@media(max-width:360px){
+  .mode-main{padding:21px 14px}
+  .mode-brand h2{font-size:22px}
+  .mode-brand .logo-big{width:48px;height:48px}
+}
+</style>
+
 </body>
 </html>
