@@ -815,6 +815,31 @@ body.display-modern .welcome{background:var(--grad);border-radius:18px}
             <div style="margin-top:12px"><button class="primary" onclick="createAccount()">Créer le compte</button></div>
             <div class="msg" id="accountMsg"></div><div class="list" id="accountList"></div>
           </div>
+          <div class="card" id="accessManagerCard">
+            <h3>Gestion des accès et restrictions</h3>
+            <p class="sub">Désactivez temporairement un compte, affichez un message de maintenance ou suspendez un accès. Les réglages sont enregistrés sur le serveur.</p>
+            <label style="display:flex;align-items:center;gap:9px;margin:12px 0">
+              <input id="globalMaintenanceEnabled" type="checkbox" style="width:auto;margin:0">
+              <strong>Activer la maintenance générale</strong>
+            </label>
+            <label for="globalAccessReason">Motif</label>
+            <select id="globalAccessReason">
+              <option value="update">Mise à jour</option><option value="maintenance">Maintenance</option>
+              <option value="security">Sécurité</option><option value="verification">Vérification</option>
+              <option value="administrative">Décision administrative</option><option value="suspension">Suspension</option><option value="custom">Autre</option>
+            </select>
+            <label for="globalAccessMessage">Message affiché à la connexion</label>
+            <textarea id="globalAccessMessage" rows="3" maxlength="500" placeholder="Ex. Le service 3D Nainbus est actuellement en maintenance. Merci de réessayer plus tard."></textarea>
+            <label for="globalAccessUntil">Fin prévue (facultatif)</label>
+            <input id="globalAccessUntil" type="datetime-local">
+            <div style="margin-top:12px"><button class="primary" onclick="saveGlobalAccess()">Enregistrer la maintenance</button></div>
+            <p class="sub" style="margin-top:10px">Le compte principal de gestion conserve l’accès pour pouvoir désactiver la maintenance.</p>
+            <hr class="sep">
+            <h3>Restrictions par compte</h3>
+            <p class="sub">Choisissez un état, un motif et un message pour chaque compte.</p>
+            <div class="list" id="accessAccountList"></div>
+            <div class="msg" id="accessMsg"></div>
+          </div>
           <div class="card">
             <h3>Changer le mot de passe</h3>
             <label for="npw">Nouveau mot de passe (chiffres uniquement, 6 min.)</label>
@@ -1240,10 +1265,10 @@ async function login(){
     }
   }catch(e){
     sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token"); sessionStorage.removeItem("nb_role"); sessionStorage.removeItem("nb_username");
-    err = e.status === 401 ? "Identifiant ou mot de passe incorrect." : e.status === 429 ? e.message : "Connexion au serveur impossible. Réessayez.";
+    err = e.status === 401 ? "Identifiant ou mot de passe incorrect." : e.status === 429 ? e.message : [403,503].includes(e.status) ? (e.message || "Accès temporairement indisponible.") : "Connexion au serveur impossible. Réessayez.";
   }
   await wait; $("loader").classList.add("hidden");
-  if(err){ m.textContent = err; loginPw.clear(); return; }
+  if(err){ m.textContent = err; if($("homeLoginMsg")) $("homeLoginMsg").textContent = err; loginPw.clear(); return; }
   initLogo();
   loadDisplayTheme();
   if(String(sessionStorage.getItem("nb_username") || "").toLowerCase() === "administrateur") {
@@ -1271,12 +1296,83 @@ function logout(){
     (ONLINE ? pullPublic() : Promise.resolve()).catch(() => {}).then(() => go("home"));
   }, "Déconnexion…");
 }
+function accessDateValue(timestamp){
+  if(!timestamp) return "";
+  const d = new Date(Number(timestamp));
+  if(Number.isNaN(d.getTime())) return "";
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0,16);
+}
+function accessDateTimestamp(value){
+  if(!value) return null;
+  const t = new Date(value).getTime();
+  return Number.isFinite(t) ? t : null;
+}
+function accessReasonOptions(selected){
+  const opts = [
+    ["update","Mise à jour"],["maintenance","Maintenance"],["security","Sécurité"],
+    ["verification","Vérification"],["administrative","Décision administrative"],
+    ["suspension","Suspension"],["custom","Autre"]
+  ];
+  return opts.map(([v,l]) => `<option value="${v}" ${selected===v?"selected":""}>${l}</option>`).join("");
+}
 async function loadAccounts(){
   if(!ONLINE || !isAdmin()) return;
   try{
-    const j = await api("usersList");
-    $("accountList").innerHTML = (j.users || []).map(u => `<div class="item"><div><b>${esc(u.user)}</b>${String(u.user||"").toLowerCase()==="administrateur" ? ' <span class="adm-badge">COMPTE PROTÉGÉ</span>' : ''}<small>${u.role === "admin" ? "Administrateur" : "Assistant"}</small></div>${String(u.user||"").toLowerCase()==="administrateur" ? '' : `<button class="small danger" onclick="deleteAccount('${esc(u.id)}')">Supprimer</button>`}</div>`).join("") || '<p class="sub">Aucun compte supplémentaire pour le moment.</p>';
+    const [j, a] = await Promise.all([api("usersList"), api("accessGet")]);
+    const g = (a.access && a.access.global) || {};
+    $("globalMaintenanceEnabled").checked = !!g.enabled;
+    $("globalAccessReason").value = g.reason || "maintenance";
+    $("globalAccessMessage").value = g.message || "";
+    $("globalAccessUntil").value = accessDateValue(g.until);
+    $("accountList").innerHTML = (j.users || []).map(u => `<div class="item"><div><b>${esc(u.user)}</b>${String(u.user||"").toLowerCase()==="administrateur" ? ' <span class="adm-badge">COMPTE PROTÉGÉ</span>' : ''}<small>${u.role === "admin" ? "Administrateur" : "Assistant"} · ${u.accessStatus === "active" ? "Actif" : u.accessStatus === "suspended" ? "Suspendu" : u.accessStatus === "maintenance" ? "Maintenance" : "Désactivé"}</small></div>${String(u.user||"").toLowerCase()==="administrateur" ? '' : `<button class="small danger" onclick="deleteAccount('${esc(u.id)}')">Supprimer</button>`}</div>`).join("") || '<p class="sub">Aucun compte supplémentaire pour le moment.</p>';
+    $("accessAccountList").innerHTML = (j.users || []).map(u => {
+      const status = u.accessStatus || "active";
+      return `<div class="item" style="display:block;padding:12px;margin:8px 0">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><b>${esc(u.user)}</b><small>${u.role === "admin" ? "Administrateur" : "Assistant"}</small></div>
+        <label>État du compte</label>
+          <select id="accessStatus_${esc(u.id)}">
+            <option value="active" ${status==="active"?"selected":""}>Actif</option>
+            <option value="disabled" ${status==="disabled"?"selected":""}>Désactivé temporairement</option>
+            <option value="maintenance" ${status==="maintenance"?"selected":""}>Maintenance / mise à jour</option>
+            <option value="suspended" ${status==="suspended"?"selected":""}>Suspendu</option>
+          </select>
+          <label>Motif</label><select id="accessReason_${esc(u.id)}">${accessReasonOptions(u.accessReason || "administrative")}</select>
+          <label>Message affiché à la connexion</label>
+          <textarea id="accessMessage_${esc(u.id)}" rows="2" maxlength="500" placeholder="Message personnalisé">${esc(u.accessMessage || "")}</textarea>
+          <label>Fin prévue (facultatif)</label><input id="accessUntil_${esc(u.id)}" type="datetime-local" value="${accessDateValue(u.accessUntil)}">
+          <div style="margin-top:9px"><button class="small primary" onclick="saveAccountAccess('${esc(u.id)}')">Enregistrer cette restriction</button></div>
+      </div>`;
+    }).join("") || '<p class="sub">Aucun compte supplémentaire à gérer.</p>';
   }catch(e){ $("accountMsg").className="msg err"; $("accountMsg").textContent=e.message || "Impossible de charger les comptes."; }
+}
+async function saveGlobalAccess(){
+  const m = $("accessMsg");
+  try{
+    await api("accessSave", {
+      enabled: $("globalMaintenanceEnabled").checked,
+      reason: $("globalAccessReason").value,
+      message: $("globalAccessMessage").value.trim(),
+      until: accessDateTimestamp($("globalAccessUntil").value)
+    });
+    m.className = "msg ok";
+    m.textContent = $("globalMaintenanceEnabled").checked ? "Maintenance générale enregistrée. Le compte principal conserve l’accès." : "Maintenance générale désactivée.";
+  }catch(e){ m.className="msg err"; m.textContent=e.message || "Enregistrement impossible."; }
+}
+async function saveAccountAccess(id){
+  const m = $("accessMsg");
+  try{
+    const status = $("accessStatus_" + id).value;
+    await api("usersAccessUpdate", {
+      id, status,
+      reason: $("accessReason_" + id).value,
+      message: $("accessMessage_" + id).value.trim(),
+      until: accessDateTimestamp($("accessUntil_" + id).value)
+    });
+    m.className = "msg ok";
+    m.textContent = status === "active" ? "Compte réactivé ✔" : "Restriction enregistrée ✔";
+    await loadAccounts();
+  }catch(e){ m.className="msg err"; m.textContent=e.message || "Impossible d’enregistrer cette restriction."; }
 }
 async function createAccount(){
   const user=$("newAccountUser").value.trim().toLowerCase(), pass=$("newAccountPass").value, role=$("newAccountRole").value, m=$("accountMsg");
