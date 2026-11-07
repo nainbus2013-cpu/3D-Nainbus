@@ -196,6 +196,70 @@ function requireAdmin(session) {
   }
 }
 
+const DEFAULT_ACCESS = {
+  global: { enabled: false, message: "", reason: "maintenance", until: null },
+  accounts: {}
+};
+
+async function getAccessControl() {
+  const saved = await getK("accessControl", null);
+  if (!saved || typeof saved !== "object") {
+    return JSON.parse(JSON.stringify(DEFAULT_ACCESS));
+  }
+  return {
+    global: {
+      enabled: !!(saved.global && saved.global.enabled),
+      message: clean(saved.global && saved.global.message, 500),
+      reason: clean(saved.global && saved.global.reason, 40) || "maintenance",
+      until: Number(saved.global && saved.global.until) || null
+    },
+    accounts: saved.accounts && typeof saved.accounts === "object"
+      ? saved.accounts : {}
+  };
+}
+
+function accessMessage(entry, fallback) {
+  const reason = clean(entry && entry.reason, 40);
+  const message = clean(entry && entry.message, 500);
+  if (message) return message;
+  const labels = {
+    update: "Une mise à jour est en cours. Merci de réessayer ultérieurement.",
+    maintenance: "Le service est momentanément en maintenance. Merci de réessayer plus tard.",
+    security: "L’accès est temporairement suspendu pour des raisons de sécurité.",
+    verification: "Une vérification est nécessaire avant de rétablir cet accès.",
+    administrative: "L’accès à ce compte est temporairement désactivé.",
+    suspension: "Ce compte a été suspendu. Contactez le responsable du service."
+  };
+  return labels[reason] || fallback;
+}
+
+async function checkAccountAccess(userRecord, control) {
+  if (!userRecord) return;
+  const entry = control.accounts[userRecord.id];
+  if (!entry) return;
+  if (entry.until && Number(entry.until) <= Date.now()) {
+    delete control.accounts[userRecord.id];
+    await setK("accessControl", control);
+    return;
+  }
+  if (entry.status && entry.status !== "active") {
+    throw bad(accessMessage(entry, "L’accès à ce compte est temporairement indisponible."), 403);
+  }
+}
+
+async function checkGlobalAccess(control, isMaster) {
+  const g = control.global;
+  if (!isMaster && g && g.enabled) {
+    if (g.until && Number(g.until) <= Date.now()) {
+      control.global.enabled = false;
+      control.global.until = null;
+      await setK("accessControl", control);
+      return;
+    }
+    throw bad(accessMessage(g, "Le service est momentanément indisponible."), 503);
+  }
+}
+
 module.exports = async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
 
@@ -240,7 +304,7 @@ module.exports = async (req, res) => {
         await passOk(pass)
       ) {
         return res.status(200).json({
-          token: makeToken({ role: "admin", user }),
+          token: makeToken({ role: "admin", user, master: true }),
           role: "admin",
           user
         });
@@ -257,6 +321,10 @@ module.exports = async (req, res) => {
       if (!found || sha(found.salt + pass) !== found.hash) {
         throw bad("Identifiant ou mot de passe incorrect.", 401);
       }
+
+      const access = await getAccessControl();
+      await checkGlobalAccess(access, false);
+      await checkAccountAccess(found, access);
 
       return res.status(200).json({
         token: makeToken({
@@ -370,6 +438,17 @@ module.exports = async (req, res) => {
       );
     }
 
+    if (!session.master) {
+      const access = await getAccessControl();
+      await checkGlobalAccess(access, false);
+      if (session.uid) {
+        const currentUsers = (await getK("users", [])) || [];
+        const currentUser = currentUsers.find(x => x.id === session.uid);
+        if (!currentUser) throw bad("Ce compte n’existe plus. Reconnectez-vous.", 401);
+        await checkAccountAccess(currentUser, access);
+      }
+    }
+
     if (a === "logout") {
       return res.status(200).json({ ok: true });
     }
@@ -456,6 +535,62 @@ module.exports = async (req, res) => {
 
     // À PARTIR D'ICI, ACTIONS RÉSERVÉES AU GÉRANT
     requireAdmin(session);
+
+    // PARAMÈTRES DES ACCÈS ET DE LA MAINTENANCE
+    if (a === "accessGet") {
+      const control = await getAccessControl();
+      return res.status(200).json({ access: control });
+    }
+
+    if (a === "accessSave") {
+      const control = await getAccessControl();
+      const until = b.until == null || b.until === "" ? null : Number(b.until);
+      if (b.enabled && until !== null && (!Number.isFinite(until) || until < Date.now() - 60000)) {
+        throw bad("Date de fin invalide.");
+      }
+      control.global = {
+        enabled: !!b.enabled,
+        message: clean(b.message, 500),
+        reason: ["update", "maintenance", "security", "verification", "administrative", "suspension", "custom"].includes(b.reason)
+          ? b.reason : "maintenance",
+        until
+      };
+      await setK("accessControl", control);
+      return res.status(200).json({ ok: true, access: control });
+    }
+
+    if (a === "usersAccessUpdate") {
+      const id = clean(b.id, 100);
+      const status = ["active", "disabled", "maintenance", "suspended"].includes(b.status)
+        ? b.status : "";
+      if (!id || !status) throw bad("Paramètres de restriction invalides.");
+      if (session.uid && id === session.uid) {
+        throw bad("Vous ne pouvez pas désactiver le compte actuellement utilisé.");
+      }
+      const users = (await getK("users", [])) || [];
+      const target = users.find(x => x.id === id);
+      if (!target) throw bad("Compte introuvable.", 404);
+
+      const until = b.until == null || b.until === "" ? null : Number(b.until);
+      if (status !== "active" && until !== null && (!Number.isFinite(until) || until < Date.now() - 60000)) {
+        throw bad("Date de fin invalide.");
+      }
+
+      const control = await getAccessControl();
+      if (status === "active") {
+        delete control.accounts[id];
+      } else {
+        control.accounts[id] = {
+          status,
+          message: clean(b.message, 500),
+          reason: ["update", "maintenance", "security", "verification", "administrative", "suspension", "custom"].includes(b.reason)
+            ? b.reason : "administrative",
+          until
+        };
+      }
+      await setK("accessControl", control);
+      return res.status(200).json({ ok: true });
+    }
 
     // LISTE DES DEMANDES
     if (a === "listRequests") {
@@ -644,14 +779,25 @@ module.exports = async (req, res) => {
     // LISTE DES COMPTES
     if (a === "usersList") {
       const users = (await getK("users", [])) || [];
-
-      return res.status(200).json({
-        users: users.map(({ id, user, role }) => ({
-          id,
-          user,
-          role
-        }))
+      const control = await getAccessControl();
+      let changed = false;
+      const visibleUsers = users.map(({ id, user, role }) => {
+        let access = control.accounts[id] || { status: "active" };
+        if (access.until && Number(access.until) <= Date.now()) {
+          delete control.accounts[id];
+          access = { status: "active" };
+          changed = true;
+        }
+        return {
+          id, user, role,
+          accessStatus: access.status || "active",
+          accessMessage: access.message || "",
+          accessReason: access.reason || "administrative",
+          accessUntil: access.until || null
+        };
       });
+      if (changed) await setK("accessControl", control);
+      return res.status(200).json({ users: visibleUsers });
     }
 
     // CRÉER UN COMPTE
