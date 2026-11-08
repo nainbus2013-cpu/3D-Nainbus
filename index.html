@@ -815,7 +815,7 @@ body.display-modern .welcome{background:var(--grad);border-radius:18px}
             <div style="margin-top:12px"><button class="primary" onclick="createAccount()">Créer le compte</button></div>
             <div class="msg" id="accountMsg"></div><div class="list" id="accountList"></div>
           </div>
-          <div class="card" id="accessManagerCard">
+          <div class="card hidden" id="accessManagerCard">
             <h3>Gestion des accès et restrictions</h3>
             <p class="sub">Désactivez temporairement un compte, affichez un message de maintenance ou suspendez un accès. Les réglages sont enregistrés sur le serveur.</p>
             <label style="display:flex;align-items:center;gap:9px;margin:12px 0">
@@ -866,6 +866,53 @@ body.display-modern .welcome{background:var(--grad);border-radius:18px}
             <input type="file" id="impFile" accept="application/json,.json" onchange="importData(this)">
           </div>
         </div>
+      </div>
+    </div>
+
+    <div id="t-access" class="hidden">
+      <div class="pagehead"><h2>🛡️ Contrôle d’accès</h2><p class="sub">Gère les maintenances, les restrictions et les comptes autorisés.</p></div>
+      <div class="card" style="margin-bottom:18px">
+        <h3>🌐 Maintenance générale du site</h3>
+        <p class="sub">Le site sera inaccessible aux comptes non autorisés. Tu peux choisir les comptes qui gardent leur accès.</p>
+        <label style="display:flex;align-items:center;gap:9px;margin:12px 0"><input id="accessGlobalEnabled" type="checkbox" style="width:auto;margin:0"><strong>Activer la maintenance générale</strong></label>
+        <label for="accessGlobalReason">Motif</label>
+        <select id="accessGlobalReason" onchange="toggleCustomReason('accessGlobalReason','accessGlobalMessage')">
+          <option value="maintenance">Maintenance</option><option value="update">Mise à jour</option><option value="security">Sécurité</option><option value="verification">Vérification</option><option value="administrative">Décision administrative</option><option value="suspension">Suspension</option><option value="custom">Motif personnalisé</option>
+        </select>
+        <label for="accessGlobalMessage">Message affiché aux comptes bloqués</label>
+        <textarea id="accessGlobalMessage" rows="2" maxlength="500" placeholder="Message de maintenance ou motif personnalisé…"></textarea>
+        <label for="accessGlobalDuration">Durée de la maintenance</label>
+        <select id="accessGlobalDuration" onchange="toggleDuration('accessGlobalDuration','accessGlobalHoursWrap')"><option value="manual">Jusqu’à désactivation manuelle</option><option value="hours">Durée personnalisée</option></select>
+        <div id="accessGlobalHoursWrap" class="hidden"><label for="accessGlobalHours">Durée en heures</label><input id="accessGlobalHours" type="number" min="1" max="8760" step="1" placeholder="Ex. 3 ou 4"></div>
+        <h4 style="margin:16px 0 6px">Comptes autorisés pendant la maintenance</h4>
+        <p class="sub">Le compte principal reste toujours autorisé. Coche les autres comptes qui peuvent continuer à se connecter.</p>
+        <div id="accessExemptUsers" class="list"></div>
+        <div class="actions" style="margin-top:14px"><button class="primary" onclick="saveAccessGlobal()">Enregistrer la maintenance générale</button><button onclick="disableAccessGlobal()">Désactiver la maintenance</button></div>
+      </div>
+
+      <div class="card" style="margin-bottom:18px">
+        <h3>＋ Créer une restriction ou une maintenance</h3>
+        <p class="sub">Choisis un compte, plusieurs comptes ou tous les comptes. Une règle peut être retirée à tout moment.</p>
+        <label for="accessRuleKind">Type d’action</label>
+        <select id="accessRuleKind" onchange="updateAccessRuleLabels()"><option value="restriction">Créer une restriction de compte</option><option value="maintenance">Créer une maintenance pour des comptes</option><option value="custom">Créer un motif personnalisé</option></select>
+        <label for="accessRuleReason">Motif</label>
+        <select id="accessRuleReason" onchange="toggleCustomReason('accessRuleReason','accessRuleMessage')"><option value="administrative">Décision administrative</option><option value="maintenance">Maintenance</option><option value="update">Mise à jour</option><option value="security">Sécurité</option><option value="verification">Vérification</option><option value="suspension">Suspension</option><option value="custom">Motif personnalisé</option></select>
+        <label for="accessRuleMessage">Message / motif affiché au compte</label>
+        <textarea id="accessRuleMessage" rows="2" maxlength="500" placeholder="Explique pourquoi cet accès est restreint…"></textarea>
+        <label style="display:flex;align-items:center;gap:9px;margin:12px 0"><input id="accessRuleAll" type="checkbox" style="width:auto;margin:0" onchange="toggleAccessRuleTargets()"><strong>Appliquer à tous les comptes</strong></label>
+        <div id="accessRuleTargets" class="list"></div>
+        <label for="accessRuleDuration">Durée</label>
+        <select id="accessRuleDuration" onchange="toggleDuration('accessRuleDuration','accessRuleHoursWrap')"><option value="manual">Jusqu’à désactivation manuelle</option><option value="hours">Durée personnalisée</option></select>
+        <div id="accessRuleHoursWrap" class="hidden"><label for="accessRuleHours">Durée en heures</label><input id="accessRuleHours" type="number" min="1" max="8760" step="1" placeholder="Ex. 3 ou 4"></div>
+        <div class="actions" style="margin-top:14px"><button class="primary" id="accessCreateButton" onclick="createAccessRule()">Créer la restriction</button></div>
+        <div class="msg" id="accessCreateMsg" role="status"></div>
+      </div>
+
+      <div class="card">
+        <h3>📋 Restrictions et maintenances actives</h3>
+        <p class="sub">Les règles expirées sont automatiquement ignorées. Tu peux aussi les désactiver manuellement.</p>
+        <div id="accessRulesList" class="list"></div>
+        <div class="msg" id="accessPanelMsg" role="status"></div>
       </div>
     </div>
   </section>
@@ -1057,7 +1104,9 @@ async function api(action, data = {}, auth = true){
   const h = {"Content-Type":"application/json"};
   const t = sessionStorage.getItem("nb_token");
   if(auth && t) h.Authorization = "Bearer " + t;
-  const r = await fetch(API, {method:"POST", headers:h, body:JSON.stringify({action, ...data})});
+  const payload = {action, ...data};
+  if(["accessGet","accessSave","accessCreateRule","accessDeleteRule","usersAccessUpdate"].includes(action)) payload.accessToken = sessionStorage.getItem("nb_access_token") || "";
+  const r = await fetch(API, {method:"POST", headers:h, body:JSON.stringify(payload)});
   const j = await r.json().catch(() => ({}));
   if(r.status === 401 && auth){ sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token"); }
   if(!r.ok) throw Object.assign(new Error(j.error || "Erreur"), {status:r.status});
@@ -1185,8 +1234,9 @@ function pwWidget(el, onSubmit){
   return {value:() => inp.value, clear:() => { inp.value = ""; }, focus:() => inp.focus()};
 }
 
-let modalCb = null, modalPw = null;
+let modalCb = null, modalPw = null, modalMode = "normal";
 function askCode(cb, title){
+  modalMode = "normal";
   modalCb = cb;
   $("modalTitle").textContent = title || "Confirmez avec votre code";
   $("modalMsg").textContent = "";
@@ -1194,11 +1244,26 @@ function askCode(cb, title){
   modalPw = pwWidget($("modalPw"), submitModal);
   setTimeout(() => modalPw.focus(), 40);
 }
-function closeModal(){ $("modal").classList.add("hidden"); modalCb = null; }
+function askAccessCode(cb){
+  modalMode = "access";
+  modalCb = cb;
+  $("modalTitle").textContent = "Mot de passe — Contrôle d’accès";
+  $("modalMsg").textContent = "Entre ton mot de passe pour ouvrir cette rubrique.";
+  $("modal").classList.remove("hidden");
+  modalPw = pwWidget($("modalPw"), submitModal);
+  setTimeout(() => modalPw.focus(), 40);
+}
+function closeModal(){ $("modal").classList.add("hidden"); modalCb = null; modalMode = "normal"; }
 async function submitModal(){
-  if(!(await checkPw(modalPw.value(), true))){
-    $("modalMsg").textContent = "Code incorrect."; modalPw.clear(); modalPw.focus(); return;
-  }
+  let valid = false;
+  if(modalMode === "access"){
+    try{
+      const unlocked = await api("accessUnlock", {pass:modalPw.value()});
+      valid = unlocked.ok === true;
+      if(valid && unlocked.accessToken) sessionStorage.setItem("nb_access_token", unlocked.accessToken);
+    }catch(e){ valid = false; }
+  }else valid = await checkPw(modalPw.value(), true);
+  if(!valid){ $("modalMsg").textContent = "Mot de passe incorrect."; modalPw.clear(); modalPw.focus(); return; }
   const cb = modalCb; closeModal(); if(cb) cb();
 }
 
@@ -1292,7 +1357,7 @@ function chooseAdmSpace(space){
 function logout(){
   if(ONLINE){ try{ api("logout").catch(() => {}); }catch(e){} }
   loadFor(800, 1300, () => {
-    sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token"); sessionStorage.removeItem("nb_role"); sessionStorage.removeItem("nb_username"); sessionStorage.removeItem("nb_adm_space"); document.body.classList.remove("adm-theme","adm-assistant-space"); curTab = "dash";
+    sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token"); sessionStorage.removeItem("nb_role"); sessionStorage.removeItem("nb_username"); sessionStorage.removeItem("nb_adm_space"); sessionStorage.removeItem("nb_access_token"); accessUnlocked = false; document.body.classList.remove("adm-theme","adm-assistant-space"); curTab = "dash";
     (ONLINE ? pullPublic() : Promise.resolve()).catch(() => {}).then(() => go("home"));
   }, "Déconnexion…");
 }
@@ -1316,15 +1381,117 @@ function accessReasonOptions(selected){
   ];
   return opts.map(([v,l]) => `<option value="${v}" ${selected===v?"selected":""}>${l}</option>`).join("");
 }
+let accessUsers = [];
+function toggleDuration(selectId, wrapId){
+  const wrap = $(wrapId); if(wrap) wrap.classList.toggle("hidden", $(selectId).value !== "hours");
+}
+function toggleCustomReason(selectId, messageId){
+  const field = $(messageId); if(!field) return;
+  if($(selectId).value === "custom") field.placeholder = "Écris ici ton motif personnalisé…";
+}
+function toggleAccessRuleTargets(){
+  const all = $("accessRuleAll").checked;
+  $("accessRuleTargets").classList.toggle("hidden", all);
+}
+function updateAccessRuleLabels(){
+  const kind = $("accessRuleKind").value;
+  $("accessCreateButton").textContent = kind === "maintenance" ? "Créer la maintenance" : kind === "custom" ? "Créer le motif personnalisé" : "Créer la restriction";
+  if(kind === "custom") $("accessRuleReason").value = "custom";
+}
+function selectedAccessIds(containerId){
+  return [...$(containerId).querySelectorAll('input[type="checkbox"][data-user-id]:checked')].map(x => x.dataset.userId);
+}
+function renderAccessUserChecks(containerId, selectedIds=[]){
+  const box = $(containerId);
+  if(!accessUsers.length){ box.innerHTML = '<p class="sub">Aucun compte secondaire créé pour le moment.</p>'; return; }
+  box.innerHTML = accessUsers.map(u => `<label class="item" style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" data-user-id="${esc(u.id)}" ${selectedIds.includes(u.id)?"checked":""} style="width:auto;margin:0"><span><b>${esc(u.user)}</b><small>${u.role === "admin" ? "Administrateur" : "Assistant"}</small></span></label>`).join("");
+}
+function accessDurationUntil(prefix){
+  if($(prefix+"Duration").value === "manual") return null;
+  const hours = Number($(prefix+"Hours").value);
+  if(!Number.isFinite(hours) || hours < 1 || hours > 8760) throw new Error("Indique une durée entre 1 et 8760 heures.");
+  return Date.now() + hours * 3600000;
+}
+function accessRuleLabel(rule){
+  const kind = rule.kind === "maintenance" ? "Maintenance" : rule.kind === "custom" ? "Motif personnalisé" : "Restriction";
+  const targets = rule.targetAll ? "Tous les comptes" : (rule.targetIds || []).map(id => (accessUsers.find(u=>u.id===id)||{}).user || "Compte supprimé").join(", ");
+  const until = rule.until ? "Jusqu’au " + new Date(rule.until).toLocaleString("fr-FR") : "Jusqu’à désactivation manuelle";
+  const reason = rule.reason === "custom" ? "Personnalisé" : ({update:"Mise à jour",maintenance:"Maintenance",security:"Sécurité",verification:"Vérification",administrative:"Décision administrative",suspension:"Suspension"}[rule.reason] || "Motif");
+  return `<div class="item" style="display:block;margin:8px 0"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><b>${kind} · ${reason}</b><button class="small danger" onclick="deleteAccessRule('${esc(rule.id)}')">Désactiver</button></div><small>${esc(targets)} · ${esc(until)}</small>${rule.message ? `<p style="margin:8px 0 0">${esc(rule.message)}</p>` : ""}</div>`;
+}
+async function loadAccessPanel(){
+  if(!ONLINE || !isAdmin()) { $("accessPanelMsg").textContent = "La gestion des accès nécessite une connexion au serveur."; return; }
+  try{
+    const [u,a] = await Promise.all([api("usersList"), api("accessGet")]);
+    accessUsers = u.users || [];
+    const g = (a.access && a.access.global) || {};
+    $("accessGlobalEnabled").checked = !!g.enabled;
+    $("accessGlobalReason").value = g.reason || "maintenance";
+    $("accessGlobalMessage").value = g.message || "";
+    $("accessGlobalDuration").value = g.until ? "hours" : "manual";
+    $("accessGlobalHours").value = g.until ? Math.max(1, Math.ceil((Number(g.until)-Date.now())/3600000)) : "";
+    toggleDuration("accessGlobalDuration","accessGlobalHoursWrap");
+    renderAccessUserChecks("accessExemptUsers", g.exemptIds || []);
+    renderAccessUserChecks("accessRuleTargets");
+    $("accessRuleAll").checked = false; toggleAccessRuleTargets();
+    const rulesHtml = (a.access.rules || []).map(accessRuleLabel);
+    (a.access.accounts ? Object.entries(a.access.accounts) : []).forEach(([id, entry]) => {
+      if(!entry || !entry.status || entry.status === "active") return;
+      const who = accessUsers.find(u=>u.id===id);
+      const until = entry.until ? "Jusqu’au " + new Date(entry.until).toLocaleString("fr-FR") : "Jusqu’à désactivation manuelle";
+      rulesHtml.push(`<div class="item" style="display:block;margin:8px 0"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><b>Ancienne restriction · ${esc(who ? who.user : "Compte")}</b><button class="small danger" onclick="deleteLegacyAccess('${esc(id)}')">Désactiver</button></div><small>${esc(entry.reason || "Restriction")} · ${esc(until)}</small>${entry.message ? `<p style="margin:8px 0 0">${esc(entry.message)}</p>` : ""}</div>`);
+    });
+    $("accessRulesList").innerHTML = rulesHtml.join("") || '<p class="sub">Aucune restriction ou maintenance individuelle active.</p>';
+    $("accessPanelMsg").textContent = "Paramètres chargés.";
+  }catch(e){ $("accessPanelMsg").textContent = e.message || "Impossible de charger les accès."; }
+}
+async function saveAccessGlobal(){
+  const msg = $("accessPanelMsg");
+  try{
+    const reason = $("accessGlobalReason").value;
+    const message = $("accessGlobalMessage").value.trim();
+    if(reason === "custom" && !message) throw new Error("Écris le motif personnalisé de la maintenance.");
+    const until = accessDurationUntil("accessGlobal");
+    await api("accessSave", {enabled:$("accessGlobalEnabled").checked, reason, message, until, exemptIds:selectedAccessIds("accessExemptUsers")});
+    msg.className = "msg ok"; msg.textContent = $("accessGlobalEnabled").checked ? "Maintenance générale enregistrée." : "Maintenance générale désactivée.";
+  }catch(e){ msg.className="msg err"; msg.textContent=e.message || "Impossible d’enregistrer la maintenance."; }
+}
+async function disableAccessGlobal(){
+  $("accessGlobalEnabled").checked = false;
+  await saveAccessGlobal();
+}
+async function createAccessRule(){
+  const msg = $("accessCreateMsg");
+  try{
+    const kind = $("accessRuleKind").value;
+    const reason = kind === "custom" ? "custom" : $("accessRuleReason").value;
+    const message = $("accessRuleMessage").value.trim();
+    if(reason === "custom" && !message) throw new Error("Écris le motif personnalisé.");
+    const targetAll = $("accessRuleAll").checked;
+    const targetIds = targetAll ? [] : selectedAccessIds("accessRuleTargets");
+    if(!targetAll && !targetIds.length) throw new Error("Sélectionne au moins un compte, ou coche tous les comptes.");
+    const until = accessDurationUntil("accessRule");
+    await api("accessCreateRule", {kind, reason, message, targetAll, targetIds, until});
+    msg.className="msg ok"; msg.textContent="Règle créée et enregistrée.";
+    $("accessRuleMessage").value = "";
+    await loadAccessPanel();
+  }catch(e){ msg.className="msg err"; msg.textContent=e.message || "Impossible de créer cette règle."; }
+}
+async function deleteLegacyAccess(id){
+  if(!confirm("Désactiver cette ancienne restriction ?")) return;
+  try{ await api("usersAccessUpdate", {id, status:"active"}); await loadAccessPanel(); }
+  catch(e){ $("accessPanelMsg").className="msg err"; $("accessPanelMsg").textContent=e.message || "Impossible de désactiver cette restriction."; }
+}
+async function deleteAccessRule(id){
+  if(!confirm("Désactiver cette restriction ou maintenance ?")) return;
+  try{ await api("accessDeleteRule", {id}); await loadAccessPanel(); }
+  catch(e){ $("accessPanelMsg").className="msg err"; $("accessPanelMsg").textContent=e.message || "Impossible de désactiver cette règle."; }
+}
+
 async function loadAccounts(){
   if(!ONLINE || !isAdmin()) return;
   try{
-    const [j, a] = await Promise.all([api("usersList"), api("accessGet")]);
-    const g = (a.access && a.access.global) || {};
-    $("globalMaintenanceEnabled").checked = !!g.enabled;
-    $("globalAccessReason").value = g.reason || "maintenance";
-    $("globalAccessMessage").value = g.message || "";
-    $("globalAccessUntil").value = accessDateValue(g.until);
+    const j = await api("usersList");
     $("accountList").innerHTML = (j.users || []).map(u => `<div class="item"><div><b>${esc(u.user)}</b>${String(u.user||"").toLowerCase()==="administrateur" ? ' <span class="adm-badge">COMPTE PROTÉGÉ</span>' : ''}<small>${u.role === "admin" ? "Administrateur" : "Assistant"} · ${u.accessStatus === "active" ? "Actif" : u.accessStatus === "suspended" ? "Suspendu" : u.accessStatus === "maintenance" ? "Maintenance" : "Désactivé"}</small></div>${String(u.user||"").toLowerCase()==="administrateur" ? '' : `<button class="small danger" onclick="deleteAccount('${esc(u.id)}')">Supprimer</button>`}</div>`).join("") || '<p class="sub">Aucun compte supplémentaire pour le moment.</p>';
     $("accessAccountList").innerHTML = (j.users || []).map(u => {
       const status = u.accessStatus || "active";
@@ -1429,16 +1596,16 @@ function setDisplayTheme(theme){
 /* ============ Navigation ============ */
 const views = ["home","client","adminLogin","admin","clients","clientForm","clientDetail"];
 const PROTECTED = ["admin","clients","clientForm","clientDetail"];
-const LOCKED = ["reglages"];
-const NAV = [["dash","Tableau de bord"],["ticket","Tickets"],["bordereau","Bordereau"],["stock","Stock"],["tarifs","Tarifs"],["avis","Avis"],["messages","Messages"],["reglages","Réglages"]];
+const LOCKED = ["reglages","access"];
+const NAV = [["dash","Tableau de bord"],["ticket","Tickets"],["bordereau","Bordereau"],["stock","Stock"],["tarifs","Tarifs"],["avis","Avis"],["messages","Messages"],["access","Contrôle d’accès"],["reglages","Réglages"]];
 const USER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>';
-let curTab = "dash", curView = "home", passLock = false;
-const ADMIN_TABS = ["dash","ticket","bordereau","stock","tarifs","avis","messages","reglages","requests","newrequest","myrequests"];
+let curTab = "dash", curView = "home", passLock = false, accessUnlocked = false;
+const ADMIN_TABS = ["dash","ticket","bordereau","stock","tarifs","avis","messages","access","reglages","requests","newrequest","myrequests"];
 
 function go(v){
   if(PROTECTED.includes(v) && !isLoggedIn()) v = "adminLogin";
   if(isAssistant() && v !== "admin" && v !== "home") v = "admin";
-  if(isAssistant() && !["stock","tarifs","newrequest","myrequests",...(isADM()?["requests","reglages"]:[])].includes(curTab)) curTab = "stock";
+  if(isAssistant() && !["stock","tarifs","newrequest","myrequests",...(isADM()?["requests","access","reglages"]:[])].includes(curTab)) curTab = "stock";
   curView = v;
   views.forEach(x => $("v-"+x).classList.toggle("hidden", x !== v));
   if(v === "client"){ renderPublicReviews(); clientTab("avis"); refreshPublic(); refreshMine(); }
@@ -1452,7 +1619,7 @@ function renderTop(){
   const v = curView, nav = $("topNav"), t = $("topActions");
   if(isLoggedIn()){
     $("brand").classList.add("hidden");
-    const visibleNav = isAssistant() ? [["stock","Stock"],["tarifs","Tarifs"],["newrequest","Nouvelle demande"],["myrequests","Mes demandes"],...(isADM() ? [["requests","Demandes"],["reglages","Réglages / archives"]] : [])] : [...NAV,["requests","Demandes"]];
+    const visibleNav = isAssistant() ? [["stock","Stock"],["tarifs","Tarifs"],["newrequest","Nouvelle demande"],["myrequests","Mes demandes"],...(isADM() ? [["requests","Demandes"],["access","Contrôle d’accès"],["reglages","Réglages / archives"]] : [])] : [...NAV,["requests","Demandes"]];
     nav.innerHTML = visibleNav.map(([k,l]) =>
       `<button data-nav="${k}" class="${v==="admin" && curTab===k ? "active" : ""}">${l}${LOCKED.includes(k) ? ' <span class="lk">🔒</span>' : ""}${k==="messages" ? '<span class="bdg hidden" id="msgBadge"></span>' : ""}</button>`).join("");
     t.innerHTML = (isAdmin() ? (isADM() ? '<span class="adm-badge">ADM · ' + (sessionStorage.getItem("nb_adm_space")==="assistant" ? 'ASSISTANCE' : 'GÉRANT') + '</span>' : '') + '<span class="syncdot" id="syncDot"></span><button class="clientbtn" title="Espace client" aria-label="Espace client" onclick="openClients()">' + USER_SVG + '<span>Espace client</span></button>' : '<span class="sub">Assistant · lecture seule</span>') +
@@ -1466,9 +1633,11 @@ function renderTop(){
 }
 $("topNav").addEventListener("click", e => { const b = e.target.closest("button[data-nav]"); if(b) navTo(b.dataset.nav); });
 function navTo(t){
-  if(isAssistant() && !["stock","tarifs","newrequest","myrequests",...(isADM()?["requests","reglages"]:[])].includes(t)){ toast("Cette rubrique n’est pas accessible à l’assistance."); return; }
+  if(t !== "access"){ accessUnlocked = false; sessionStorage.removeItem("nb_access_token"); }
+  if(isAssistant() && !["stock","tarifs","newrequest","myrequests",...(isADM()?["requests","access","reglages"]:[])].includes(t)){ toast("Cette rubrique n’est pas accessible à l’assistance."); return; }
   if(!isAssistant() && ["newrequest","myrequests"].includes(t)){ return; }
   const run = () => { curTab = t; passLock = true; go("admin"); };
+  if(t === "access" && !accessUnlocked){ askAccessCode(() => { accessUnlocked = true; loadFor(500, 900, run); }); return; }
   if(LOCKED.includes(t) && !(curView === "admin" && curTab === t)) askCode(() => loadFor(1000, 1800, run));
   else run();
 }
@@ -1493,7 +1662,7 @@ function renderTicketSub(){
 $("ticketTabs").addEventListener("click", e => { const b = e.target.closest("button[data-ts]"); if(b) setTicketSub(b.dataset.ts); });
 
 function showTab(t){
-  if(isAssistant() && !["stock","tarifs","newrequest","myrequests",...(isADM()?["requests","reglages"]:[])].includes(t)) t = "stock";
+  if(isAssistant() && !["stock","tarifs","newrequest","myrequests",...(isADM()?["requests","access","reglages"]:[])].includes(t)) t = "stock";
   if(!isAdmin() && !isAssistant()) return;
   curTab = t;
   if(t !== "ticket"){ searchUnlocked = false; ticketSub = "create"; }
@@ -1505,7 +1674,8 @@ function showTab(t){
   if(t === "tarifs") renderTariffs();
   if(t === "avis") renderAdminReviews();
   if(t === "messages") renderMessages();
-  if(t === "reglages") { renderCA(); if(isAdmin()) { $("accountManagerCard").classList.toggle("hidden", !ONLINE); loadAccounts(); } renderRequestArchives(); }
+  if(t === "reglages") { renderCA(); if(isAdmin()) { $("accountManagerCard").classList.toggle("hidden", !ONLINE); $("accessManagerCard").classList.add("hidden"); loadAccounts(); } renderRequestArchives(); }
+  if(t === "access") loadAccessPanel();
   if(t === "newrequest") renderRequestForm();
   if(t === "myrequests") renderMyRequests();
   if(t === "requests") renderAdminRequests();
