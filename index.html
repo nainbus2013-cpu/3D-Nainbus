@@ -870,47 +870,83 @@ body.display-modern .welcome{background:var(--grad);border-radius:18px}
     </div>
 
     <div id="t-access" class="hidden">
-      <div class="pagehead"><h2>🛡️ Contrôle d’accès</h2><p class="sub">Gère les maintenances, les restrictions et les comptes autorisés.</p></div>
-      <div class="card" style="margin-bottom:18px">
-        <h3>🌐 Maintenance générale du site</h3>
-        <p class="sub">Le site sera inaccessible aux comptes non autorisés. Tu peux choisir les comptes qui gardent leur accès.</p>
-        <label style="display:flex;align-items:center;gap:9px;margin:12px 0"><input id="accessGlobalEnabled" type="checkbox" style="width:auto;margin:0"><strong>Activer la maintenance générale</strong></label>
-        <label for="accessGlobalReason">Motif</label>
-        <select id="accessGlobalReason" onchange="toggleCustomReason('accessGlobalReason','accessGlobalMessage')">
-          <option value="maintenance">Maintenance</option><option value="update">Mise à jour</option><option value="security">Sécurité</option><option value="verification">Vérification</option><option value="administrative">Décision administrative</option><option value="suspension">Suspension</option><option value="custom">Motif personnalisé</option>
-        </select>
-        <label for="accessGlobalMessage">Message affiché aux comptes bloqués</label>
-        <textarea id="accessGlobalMessage" rows="2" maxlength="500" placeholder="Message de maintenance ou motif personnalisé…"></textarea>
-        <label for="accessGlobalDuration">Durée de la maintenance</label>
-        <select id="accessGlobalDuration" onchange="toggleDuration('accessGlobalDuration','accessGlobalHoursWrap')"><option value="manual">Jusqu’à désactivation manuelle</option><option value="hours">Durée personnalisée</option></select>
-        <div id="accessGlobalHoursWrap" class="hidden"><label for="accessGlobalHours">Durée en heures</label><input id="accessGlobalHours" type="number" min="1" max="8760" step="1" placeholder="Ex. 3 ou 4"></div>
-        <h4 style="margin:16px 0 6px">Comptes autorisés pendant la maintenance</h4>
-        <p class="sub">Le compte principal reste toujours autorisé. Coche les autres comptes qui peuvent continuer à se connecter.</p>
-        <div id="accessExemptUsers" class="list"></div>
-        <div class="actions" style="margin-top:14px"><button class="primary" onclick="saveAccessGlobal()">Enregistrer la maintenance générale</button><button onclick="disableAccessGlobal()">Désactiver la maintenance</button></div>
+      <div class="pagehead">
+        <h2>🛡️ Contrôle d’accès</h2>
+        <p class="sub">Un seul formulaire pour mettre le site en maintenance ou bloquer certains comptes.</p>
       </div>
 
-      <div class="card" style="margin-bottom:18px">
-        <h3>＋ Créer une restriction ou une maintenance</h3>
-        <p class="sub">Choisis un compte, plusieurs comptes ou tous les comptes. Une règle peut être retirée à tout moment.</p>
-        <label for="accessRuleKind">Type d’action</label>
-        <select id="accessRuleKind" onchange="updateAccessRuleLabels()"><option value="restriction">Créer une restriction de compte</option><option value="maintenance">Créer une maintenance pour des comptes</option><option value="custom">Créer un motif personnalisé</option></select>
-        <label for="accessRuleReason">Motif</label>
-        <select id="accessRuleReason" onchange="toggleCustomReason('accessRuleReason','accessRuleMessage')"><option value="administrative">Décision administrative</option><option value="maintenance">Maintenance</option><option value="update">Mise à jour</option><option value="security">Sécurité</option><option value="verification">Vérification</option><option value="suspension">Suspension</option><option value="custom">Motif personnalisé</option></select>
-        <label for="accessRuleMessage">Message / motif affiché au compte</label>
-        <textarea id="accessRuleMessage" rows="2" maxlength="500" placeholder="Explique pourquoi cet accès est restreint…"></textarea>
-        <label style="display:flex;align-items:center;gap:9px;margin:12px 0"><input id="accessRuleAll" type="checkbox" style="width:auto;margin:0" onchange="toggleAccessRuleTargets()"><strong>Appliquer à tous les comptes</strong></label>
-        <div id="accessRuleTargets" class="list"></div>
-        <label for="accessRuleDuration">Durée</label>
-        <select id="accessRuleDuration" onchange="toggleDuration('accessRuleDuration','accessRuleHoursWrap')"><option value="manual">Jusqu’à désactivation manuelle</option><option value="hours">Durée personnalisée</option></select>
-        <div id="accessRuleHoursWrap" class="hidden"><label for="accessRuleHours">Durée en heures</label><input id="accessRuleHours" type="number" min="1" max="8760" step="1" placeholder="Ex. 3 ou 4"></div>
-        <div class="actions" style="margin-top:14px"><button class="primary" id="accessCreateButton" onclick="createAccessRule()">Créer la restriction</button></div>
+      <div class="card" style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 style="margin-bottom:5px">État actuel du site</h3>
+            <p class="sub" id="accessCurrentStatus">Chargement…</p>
+          </div>
+          <button class="small danger" id="accessStopGlobal" onclick="disableSimpleGlobal()" style="display:none">Arrêter la maintenance générale</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <h3>＋ Créer une action</h3>
+        <p class="sub">Choisis simplement ce que tu veux faire. Les options inutiles seront masquées automatiquement.</p>
+
+        <label for="simpleAccessAction">Que veux-tu faire ?</label>
+        <select id="simpleAccessAction" onchange="updateSimpleAccessForm()">
+          <option value="global">Mettre tout le site en maintenance</option>
+          <option value="maintenance">Mettre un ou plusieurs comptes en maintenance</option>
+          <option value="restriction">Restreindre un ou plusieurs comptes</option>
+          <option value="custom">Créer un motif personnalisé</option>
+        </select>
+        <p class="sub" id="simpleAccessHelp" style="margin-top:7px">Tout le monde sera bloqué, sauf les comptes que tu autorises.</p>
+
+        <div id="simpleAccessTargetsWrap" class="hidden">
+          <label style="display:flex;align-items:center;gap:9px;margin:12px 0">
+            <input id="simpleAccessAll" type="checkbox" style="width:auto;margin:0" onchange="updateSimpleAccessForm()">
+            <strong>Appliquer à tous les comptes</strong>
+          </label>
+          <div id="simpleAccessTargets" class="list"></div>
+        </div>
+
+        <div id="simpleAccessExemptWrap">
+          <label style="margin-top:12px">Comptes autorisés à continuer à se connecter</label>
+          <p class="sub">Coche les comptes qui ne doivent pas être concernés par la maintenance.</p>
+          <div id="simpleAccessExempts" class="list"></div>
+        </div>
+
+        <div id="simpleAccessReasonWrap">
+          <label for="simpleAccessReason">Motif</label>
+          <select id="simpleAccessReason" onchange="updateSimpleAccessForm()">
+            <option value="maintenance">Maintenance</option>
+            <option value="update">Mise à jour</option>
+            <option value="security">Sécurité</option>
+            <option value="verification">Vérification</option>
+            <option value="administrative">Décision administrative</option>
+            <option value="suspension">Suspension</option>
+            <option value="custom">Motif personnalisé</option>
+          </select>
+        </div>
+
+        <label for="simpleAccessMessage" id="simpleAccessMessageLabel">Message affiché aux comptes concernés</label>
+        <textarea id="simpleAccessMessage" rows="2" maxlength="500" placeholder="Ex. Le site est momentanément en maintenance. Merci de revenir plus tard."></textarea>
+
+        <label for="simpleAccessDuration">Combien de temps ?</label>
+        <select id="simpleAccessDuration" onchange="toggleDuration('simpleAccessDuration','simpleAccessHoursWrap')">
+          <option value="manual">Jusqu’à ce que je désactive l’action</option>
+          <option value="hours">Pendant un nombre d’heures</option>
+        </select>
+        <div id="simpleAccessHoursWrap" class="hidden">
+          <label for="simpleAccessHours">Durée en heures</label>
+          <input id="simpleAccessHours" type="number" min="1" max="8760" step="1" placeholder="Ex. 3, 4, 24…">
+        </div>
+
+        <div class="actions" style="margin-top:15px">
+          <button class="primary" id="simpleAccessSubmit" onclick="createSimpleAccessAction()">Activer la maintenance</button>
+        </div>
         <div class="msg" id="accessCreateMsg" role="status"></div>
       </div>
 
       <div class="card">
-        <h3>📋 Restrictions et maintenances actives</h3>
-        <p class="sub">Les règles expirées sont automatiquement ignorées. Tu peux aussi les désactiver manuellement.</p>
+        <h3>📋 Actions actuellement actives</h3>
+        <p class="sub">Tu peux arrêter une restriction ou une maintenance à tout moment.</p>
         <div id="accessRulesList" class="list"></div>
         <div class="msg" id="accessPanelMsg" role="status"></div>
       </div>
@@ -1248,7 +1284,7 @@ function askAccessCode(cb){
   modalMode = "access";
   modalCb = cb;
   $("modalTitle").textContent = "Mot de passe — Contrôle d’accès";
-  $("modalMsg").textContent = "Entre ton mot de passe pour ouvrir cette rubrique.";
+  $("modalMsg").textContent = "Entre ton mot de passe une seule fois pour ouvrir cette rubrique. Tu pourras ensuite gérer les maintenances sans le ressaisir à chaque action.";
   $("modal").classList.remove("hidden");
   modalPw = pwWidget($("modalPw"), submitModal);
   setTimeout(() => modalPw.focus(), 40);
@@ -1385,107 +1421,133 @@ let accessUsers = [];
 function toggleDuration(selectId, wrapId){
   const wrap = $(wrapId); if(wrap) wrap.classList.toggle("hidden", $(selectId).value !== "hours");
 }
-function toggleCustomReason(selectId, messageId){
-  const field = $(messageId); if(!field) return;
-  if($(selectId).value === "custom") field.placeholder = "Écris ici ton motif personnalisé…";
-}
-function toggleAccessRuleTargets(){
-  const all = $("accessRuleAll").checked;
-  $("accessRuleTargets").classList.toggle("hidden", all);
-}
-function updateAccessRuleLabels(){
-  const kind = $("accessRuleKind").value;
-  $("accessCreateButton").textContent = kind === "maintenance" ? "Créer la maintenance" : kind === "custom" ? "Créer le motif personnalisé" : "Créer la restriction";
-  if(kind === "custom") $("accessRuleReason").value = "custom";
-}
 function selectedAccessIds(containerId){
-  return [...$(containerId).querySelectorAll('input[type="checkbox"][data-user-id]:checked')].map(x => x.dataset.userId);
+  const box = $(containerId);
+  return box ? [...box.querySelectorAll('input[type="checkbox"][data-user-id]:checked')].map(x => x.dataset.userId) : [];
 }
 function renderAccessUserChecks(containerId, selectedIds=[]){
   const box = $(containerId);
+  if(!box) return;
   if(!accessUsers.length){ box.innerHTML = '<p class="sub">Aucun compte secondaire créé pour le moment.</p>'; return; }
   box.innerHTML = accessUsers.map(u => `<label class="item" style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" data-user-id="${esc(u.id)}" ${selectedIds.includes(u.id)?"checked":""} style="width:auto;margin:0"><span><b>${esc(u.user)}</b><small>${u.role === "admin" ? "Administrateur" : "Assistant"}</small></span></label>`).join("");
 }
-function accessDurationUntil(prefix){
-  if($(prefix+"Duration").value === "manual") return null;
-  const hours = Number($(prefix+"Hours").value);
+function simpleAccessUntil(){
+  if($("simpleAccessDuration").value === "manual") return null;
+  const hours = Number($("simpleAccessHours").value);
   if(!Number.isFinite(hours) || hours < 1 || hours > 8760) throw new Error("Indique une durée entre 1 et 8760 heures.");
   return Date.now() + hours * 3600000;
 }
+function updateSimpleAccessForm(){
+  const action = $("simpleAccessAction").value;
+  const global = action === "global";
+  const custom = action === "custom";
+  const all = $("simpleAccessAll").checked;
+  $("simpleAccessTargetsWrap").classList.toggle("hidden", global);
+  $("simpleAccessExemptWrap").classList.toggle("hidden", !global);
+  $("simpleAccessTargets").classList.toggle("hidden", all);
+  $("simpleAccessReasonWrap").classList.toggle("hidden", custom);
+  if(custom) $("simpleAccessReason").value = "custom";
+  const reason = custom ? "custom" : $("simpleAccessReason").value;
+  $("simpleAccessMessageLabel").textContent = reason === "custom" ? "Écris ton motif personnalisé" : "Message affiché aux comptes concernés (facultatif)";
+  $("simpleAccessMessage").placeholder = reason === "custom" ? "Écris exactement le motif qui sera affiché…" : "Ex. Le site est momentanément en maintenance…";
+  const labels = {
+    global: ["Tout le monde sera bloqué, sauf les comptes que tu autorises.", "Activer la maintenance"],
+    maintenance: ["Seuls les comptes sélectionnés seront mis en maintenance.", "Mettre en maintenance"],
+    restriction: ["Seuls les comptes sélectionnés seront concernés par la restriction.", "Créer la restriction"],
+    custom: ["Écris ton propre motif, puis choisis les comptes concernés.", "Appliquer le motif"]
+  };
+  $("simpleAccessHelp").textContent = labels[action][0];
+  $("simpleAccessSubmit").textContent = labels[action][1];
+}
 function accessRuleLabel(rule){
   const kind = rule.kind === "maintenance" ? "Maintenance" : rule.kind === "custom" ? "Motif personnalisé" : "Restriction";
-  const targets = rule.targetAll ? "Tous les comptes" : (rule.targetIds || []).map(id => (accessUsers.find(u=>u.id===id)||{}).user || "Compte supprimé").join(", ");
-  const until = rule.until ? "Jusqu’au " + new Date(rule.until).toLocaleString("fr-FR") : "Jusqu’à désactivation manuelle";
+  const names = ids => (ids || []).map(id => (accessUsers.find(u=>u.id===id)||{}).user || "Compte supprimé");
+  let targets = rule.targetAll ? "Tous les comptes" : names(rule.targetIds).join(", ");
+  if(rule.targetAll && rule.excludeIds && rule.excludeIds.length){
+    targets += " · sauf " + names(rule.excludeIds).join(", ");
+  }
+  const until = rule.until ? "Expire le " + new Date(rule.until).toLocaleString("fr-FR") : "Sans date de fin";
   const reason = rule.reason === "custom" ? "Personnalisé" : ({update:"Mise à jour",maintenance:"Maintenance",security:"Sécurité",verification:"Vérification",administrative:"Décision administrative",suspension:"Suspension"}[rule.reason] || "Motif");
-  return `<div class="item" style="display:block;margin:8px 0"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><b>${kind} · ${reason}</b><button class="small danger" onclick="deleteAccessRule('${esc(rule.id)}')">Désactiver</button></div><small>${esc(targets)} · ${esc(until)}</small>${rule.message ? `<p style="margin:8px 0 0">${esc(rule.message)}</p>` : ""}</div>`;
+  return `<div class="item" style="display:block;margin:8px 0"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><b>${kind} · ${reason}</b><button class="small danger" onclick="deleteAccessRule('${esc(rule.id)}')">Désactiver</button></div><small>${esc(targets || "Aucun compte sélectionné")} · ${esc(until)}</small>${rule.message ? `<p style="margin:8px 0 0">${esc(rule.message)}</p>` : ""}</div>`;
 }
 async function loadAccessPanel(){
   if(!ONLINE || !isAdmin()) { $("accessPanelMsg").textContent = "La gestion des accès nécessite une connexion au serveur."; return; }
   try{
     const [u,a] = await Promise.all([api("usersList"), api("accessGet")]);
     accessUsers = u.users || [];
-    const g = (a.access && a.access.global) || {};
-    $("accessGlobalEnabled").checked = !!g.enabled;
-    $("accessGlobalReason").value = g.reason || "maintenance";
-    $("accessGlobalMessage").value = g.message || "";
-    $("accessGlobalDuration").value = g.until ? "hours" : "manual";
-    $("accessGlobalHours").value = g.until ? Math.max(1, Math.ceil((Number(g.until)-Date.now())/3600000)) : "";
-    toggleDuration("accessGlobalDuration","accessGlobalHoursWrap");
-    renderAccessUserChecks("accessExemptUsers", g.exemptIds || []);
-    renderAccessUserChecks("accessRuleTargets");
-    $("accessRuleAll").checked = false; toggleAccessRuleTargets();
-    const rulesHtml = (a.access.rules || []).map(accessRuleLabel);
-    (a.access.accounts ? Object.entries(a.access.accounts) : []).forEach(([id, entry]) => {
-      if(!entry || !entry.status || entry.status === "active") return;
+    const control = a.access || {};
+    const g = control.global || {};
+    renderAccessUserChecks("simpleAccessTargets");
+    renderAccessUserChecks("simpleAccessExempts", g.exemptIds || []);
+    $("simpleAccessAll").checked = false;
+    $("simpleAccessAction").value = "global";
+    $("simpleAccessReason").value = g.reason || "maintenance";
+    $("simpleAccessMessage").value = g.message || "";
+    $("simpleAccessDuration").value = g.until && Number(g.until) > Date.now() ? "hours" : "manual";
+    $("simpleAccessHours").value = g.until && Number(g.until) > Date.now() ? Math.max(1, Math.ceil((Number(g.until)-Date.now())/3600000)) : "";
+    toggleDuration("simpleAccessDuration","simpleAccessHoursWrap");
+    updateSimpleAccessForm();
+    const status = $("accessCurrentStatus");
+    const stop = $("accessStopGlobal");
+    if(g.enabled && (!g.until || Number(g.until) > Date.now())){
+      status.textContent = "🔴 Maintenance générale active" + (g.until ? " · fin prévue le " + new Date(g.until).toLocaleString("fr-FR") : " · sans date de fin");
+      stop.style.display = "inline-flex";
+    }else{
+      status.textContent = "🟢 Aucun blocage général du site";
+      stop.style.display = "none";
+    }
+    const rulesHtml = (control.rules || []).filter(rule => !rule.until || Number(rule.until) > Date.now()).map(accessRuleLabel);
+    Object.entries(control.accounts || {}).forEach(([id, entry]) => {
+      if(!entry || !entry.status || entry.status === "active" || (entry.until && Number(entry.until) <= Date.now())) return;
       const who = accessUsers.find(u=>u.id===id);
-      const until = entry.until ? "Jusqu’au " + new Date(entry.until).toLocaleString("fr-FR") : "Jusqu’à désactivation manuelle";
-      rulesHtml.push(`<div class="item" style="display:block;margin:8px 0"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><b>Ancienne restriction · ${esc(who ? who.user : "Compte")}</b><button class="small danger" onclick="deleteLegacyAccess('${esc(id)}')">Désactiver</button></div><small>${esc(entry.reason || "Restriction")} · ${esc(until)}</small>${entry.message ? `<p style="margin:8px 0 0">${esc(entry.message)}</p>` : ""}</div>`);
+      const until = entry.until ? "Expire le " + new Date(entry.until).toLocaleString("fr-FR") : "Sans date de fin";
+      rulesHtml.push(`<div class="item" style="display:block;margin:8px 0"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><b>Ancienne restriction · ${esc(who ? who.user : "Compte")}</b><button class="small danger" onclick="deleteLegacyAccess('${esc(id)}')">Désactiver</button></div><small>${esc(until)}</small>${entry.message ? `<p style="margin:8px 0 0">${esc(entry.message)}</p>` : ""}</div>`);
     });
     $("accessRulesList").innerHTML = rulesHtml.join("") || '<p class="sub">Aucune restriction ou maintenance individuelle active.</p>';
-    $("accessPanelMsg").textContent = "Paramètres chargés.";
-  }catch(e){ $("accessPanelMsg").textContent = e.message || "Impossible de charger les accès."; }
+    $("accessPanelMsg").textContent = "Les informations sont à jour.";
+  }catch(e){ $("accessPanelMsg").className="msg err"; $("accessPanelMsg").textContent = e.message || "Impossible de charger les accès."; }
 }
-async function saveAccessGlobal(){
-  const msg = $("accessPanelMsg");
-  try{
-    const reason = $("accessGlobalReason").value;
-    const message = $("accessGlobalMessage").value.trim();
-    if(reason === "custom" && !message) throw new Error("Écris le motif personnalisé de la maintenance.");
-    const until = accessDurationUntil("accessGlobal");
-    await api("accessSave", {enabled:$("accessGlobalEnabled").checked, reason, message, until, exemptIds:selectedAccessIds("accessExemptUsers")});
-    msg.className = "msg ok"; msg.textContent = $("accessGlobalEnabled").checked ? "Maintenance générale enregistrée." : "Maintenance générale désactivée.";
-  }catch(e){ msg.className="msg err"; msg.textContent=e.message || "Impossible d’enregistrer la maintenance."; }
-}
-async function disableAccessGlobal(){
-  $("accessGlobalEnabled").checked = false;
-  await saveAccessGlobal();
-}
-async function createAccessRule(){
+async function createSimpleAccessAction(){
   const msg = $("accessCreateMsg");
+  msg.className = "msg"; msg.textContent = "";
   try{
-    const kind = $("accessRuleKind").value;
-    const reason = kind === "custom" ? "custom" : $("accessRuleReason").value;
-    const message = $("accessRuleMessage").value.trim();
-    if(reason === "custom" && !message) throw new Error("Écris le motif personnalisé.");
-    const targetAll = $("accessRuleAll").checked;
-    const targetIds = targetAll ? [] : selectedAccessIds("accessRuleTargets");
-    if(!targetAll && !targetIds.length) throw new Error("Sélectionne au moins un compte, ou coche tous les comptes.");
-    const until = accessDurationUntil("accessRule");
-    await api("accessCreateRule", {kind, reason, message, targetAll, targetIds, until});
-    msg.className="msg ok"; msg.textContent="Règle créée et enregistrée.";
-    $("accessRuleMessage").value = "";
+    if(!ONLINE) throw new Error("Connecte le site au serveur avant de modifier les accès.");
+    const action = $("simpleAccessAction").value;
+    const reason = action === "custom" ? "custom" : $("simpleAccessReason").value;
+    const message = $("simpleAccessMessage").value.trim();
+    if(reason === "custom" && !message) throw new Error("Écris ton motif personnalisé avant de continuer.");
+    const until = simpleAccessUntil();
+    if(action === "global"){
+      await api("accessSave", {enabled:true, reason, message, until, exemptIds:selectedAccessIds("simpleAccessExempts")});
+      msg.className = "msg ok"; msg.textContent = "Maintenance générale activée. Les comptes autorisés gardent leur accès.";
+    }else{
+      const targetAll = $("simpleAccessAll").checked;
+      const targetIds = targetAll ? [] : selectedAccessIds("simpleAccessTargets");
+      if(!targetAll && !targetIds.length) throw new Error("Sélectionne au moins un compte, ou coche « Appliquer à tous les comptes ».");
+      const kind = action === "custom" ? "custom" : action;
+      await api("accessCreateRule", {kind, reason, message, targetAll, targetIds, until});
+      msg.className = "msg ok"; msg.textContent = action === "maintenance" ? "Maintenance créée pour les comptes sélectionnés." : action === "custom" ? "Motif personnalisé appliqué." : "Restriction créée pour les comptes sélectionnés.";
+    }
     await loadAccessPanel();
-  }catch(e){ msg.className="msg err"; msg.textContent=e.message || "Impossible de créer cette règle."; }
+  }catch(e){ msg.className="msg err"; msg.textContent=e.message || "Impossible d’enregistrer cette action."; }
+}
+async function disableSimpleGlobal(){
+  if(!confirm("Arrêter la maintenance générale et autoriser tous les comptes à se connecter ?")) return;
+  try{
+    await api("accessSave", {enabled:false, reason:"maintenance", message:"", until:null, exemptIds:[]});
+    $("accessCreateMsg").className="msg ok"; $("accessCreateMsg").textContent="Maintenance générale arrêtée.";
+    await loadAccessPanel();
+  }catch(e){ $("accessPanelMsg").className="msg err"; $("accessPanelMsg").textContent=e.message || "Impossible d’arrêter la maintenance."; }
 }
 async function deleteLegacyAccess(id){
-  if(!confirm("Désactiver cette ancienne restriction ?")) return;
+  if(!confirm("Réactiver ce compte ?")) return;
   try{ await api("usersAccessUpdate", {id, status:"active"}); await loadAccessPanel(); }
-  catch(e){ $("accessPanelMsg").className="msg err"; $("accessPanelMsg").textContent=e.message || "Impossible de désactiver cette restriction."; }
+  catch(e){ $("accessPanelMsg").className="msg err"; $("accessPanelMsg").textContent=e.message || "Impossible de réactiver ce compte."; }
 }
 async function deleteAccessRule(id){
   if(!confirm("Désactiver cette restriction ou maintenance ?")) return;
   try{ await api("accessDeleteRule", {id}); await loadAccessPanel(); }
-  catch(e){ $("accessPanelMsg").className="msg err"; $("accessPanelMsg").textContent=e.message || "Impossible de désactiver cette règle."; }
+  catch(e){ $("accessPanelMsg").className="msg err"; $("accessPanelMsg").textContent=e.message || "Impossible de désactiver cette action."; }
 }
 
 async function loadAccounts(){
@@ -1633,7 +1695,6 @@ function renderTop(){
 }
 $("topNav").addEventListener("click", e => { const b = e.target.closest("button[data-nav]"); if(b) navTo(b.dataset.nav); });
 function navTo(t){
-  if(t !== "access"){ accessUnlocked = false; sessionStorage.removeItem("nb_access_token"); }
   if(isAssistant() && !["stock","tarifs","newrequest","myrequests",...(isADM()?["requests","access","reglages"]:[])].includes(t)){ toast("Cette rubrique n’est pas accessible à l’assistance."); return; }
   if(!isAssistant() && ["newrequest","myrequests"].includes(t)){ return; }
   const run = () => { curTab = t; passLock = true; go("admin"); };
@@ -3034,6 +3095,108 @@ body:has(#v-home:not(.hidden)) .wrap{
   .mode-brand h2{font-size:22px}
   .mode-brand .logo-big{width:48px;height:48px}
 }
+</style>
+
+
+<style id="nainbus-classic-redesign-2026">
+/* 3D Nainbus — finition classique, nette et sobre (sans modifier les fonctions) */
+:root{
+  --bg:#dfe4e8; --card:#f5f6f5; --border:#c5cdd3; --text:#243342; --muted:#657482;
+  --accent:#365b78; --accent2:#527895; --accent-dark:#27445c; --accent-soft:#e5ebef;
+  --mint:#6c958b; --danger:#b84c4c; --ok:#3d8068; --soft:#e9edef; --gold:#c18a39;
+  --r:5px; --grad:linear-gradient(135deg,#365b78 0%,#456d88 100%);
+  --sh:0 2px 7px rgba(29,45,58,.08),0 8px 20px rgba(29,45,58,.07);
+  --sh-s:0 1px 3px rgba(29,45,58,.09),0 3px 8px rgba(29,45,58,.05);
+}
+body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased}
+header.top{background:#263746;border-bottom:3px solid #b66a43;box-shadow:0 2px 8px rgba(20,30,40,.18);backdrop-filter:none;-webkit-backdrop-filter:none;color:#f4f5f5}
+.brand{color:#f4f5f5;font-family:Arial,sans-serif;font-weight:800;letter-spacing:.1px}
+.brand i{background:none;color:#d58a61;-webkit-text-fill-color:#d58a61}
+#topNav{gap:3px}
+#topNav button{border-radius:4px;color:#d2dbe1;padding:10px 13px;font-size:13px}
+#topNav button:hover{color:#fff;background:#3b5367}
+#topNav button.active{background:#b66a43;color:#fff;box-shadow:none}
+.clientbtn{border:1px solid #607789;border-radius:4px;background:#354c5e;color:#fff}
+.clientbtn:hover{background:#b66a43;color:#fff}
+.logoutbtn{border-radius:4px;background:#263746;border-color:#9a5555;color:#ffdede}
+#clock{border-radius:4px;background:#354c5e;color:#fff}
+.wrap{max-width:1120px;padding-top:26px}
+.card,.tile,.modal{border:1px solid var(--border);border-radius:5px;box-shadow:var(--sh);background:var(--card)}
+.card{padding:23px}
+.hero{border:1px solid var(--border);border-radius:6px;background:#f0f2f2;box-shadow:var(--sh)}
+.hero::before,.hero::after{display:none}
+.hero h2{color:#263b4d}
+.hero p{color:#667684}
+button,.btn{border:1px solid #bdc7ce;border-radius:4px;background:#f7f8f8;color:#2c4050;box-shadow:0 1px 2px rgba(20,35,45,.07);transition:background .15s,border-color .15s,color .15s}
+button:hover,.btn:hover{transform:none;border-color:#7891a3;box-shadow:0 2px 5px rgba(20,35,45,.10);background:#fff}
+button.primary,.btn.primary{background:#365b78;border:1px solid #29475f;color:#fff;box-shadow:none}
+button.primary:hover,.btn.primary:hover{background:#29475f;box-shadow:none;filter:none}
+button.danger{color:#a84444}
+label{color:#485b6a}
+input,textarea,select{border:1px solid #c4cdd3;border-radius:4px;background:#fff;color:#263746;box-shadow:inset 0 1px 2px rgba(20,35,45,.035)}
+input:focus,textarea:focus,select:focus{border-color:#527895;background:#fff;box-shadow:0 0 0 2px rgba(54,91,120,.13)}
+.tabs{gap:5px;border-bottom:1px solid var(--border);padding-bottom:10px}
+.tabs button{border:1px solid #c5cdd3;border-radius:4px;background:#edf0f2;color:#526372}
+.tabs button.active{background:#365b78;color:#fff;box-shadow:none;border-color:#29475f}
+.item{border:1px solid #d5dce0;border-radius:4px;background:#eef1f2}
+.item.click:hover{background:#fff;box-shadow:var(--sh);transform:none}
+.avatar{border-radius:4px;background:#456d88;box-shadow:none}
+.tag{border-radius:3px;background:#e2eaf0;color:#365b78}
+.tag.warn{background:#f5ead8;color:#8b6029}
+.tag.ok{background:#e2eee8;color:#3d8068}
+.tile::before{background:#b66a43}
+.welcome{border-radius:5px;background:#30495d;box-shadow:0 5px 14px rgba(29,45,58,.15)}
+.welcome::after{display:none}
+.welcome p{color:#d6e0e6}
+.total{border-color:#cbd3d8}
+.overlay{background:rgba(22,34,44,.62);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.modal{border-radius:5px}
+.toast{border-radius:4px;background:#263746}
+footer{color:#71808b}
+
+/* Connexion entièrement repensée : panneau de choix + formulaire encadré */
+body:has(#v-home:not(.hidden)) .wrap{max-width:1050px;padding:30px 20px 48px}
+body:has(#v-home:not(.hidden)) header.top{position:relative}
+.mode-shell{display:grid;grid-template-columns:215px minmax(0,1fr);min-height:590px;overflow:hidden;border:1px solid #aebbc4;border-radius:6px;background:#e8edef;box-shadow:0 12px 30px rgba(28,43,55,.13)}
+.mode-sidebar{width:auto;flex:none;padding:25px 15px;background:#263746;border:0;border-right:1px solid #1b2b37;gap:10px}
+.mode-sidebar::before{content:"CHOIX DE L’ESPACE";color:#b9c6cf;padding:5px 8px 15px;font-size:10px;letter-spacing:1.1px}
+.mode-sidebar .entry-mode{min-height:76px;display:flex;flex-direction:row;justify-content:flex-start;gap:12px;padding:12px 10px;text-align:left;border:1px solid #536777;border-radius:4px;background:#31485a;color:#e9eef1;font-size:13px;font-weight:700;box-shadow:none}
+.mode-sidebar .entry-mode.active{background:#b66a43;border-color:#d18a64;color:#fff;box-shadow:inset 3px 0 #f0c0a3}
+.mode-sidebar .entry-mode:hover:not(.active){background:#40596d;border-color:#8094a3}
+.entry-icon{width:30px;flex:0 0 30px;display:grid;place-items:center;font-size:21px}
+.mode-main{min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:0;padding:42px clamp(22px,5vw,68px);background:linear-gradient(135deg,#e9edef,#dfe5e8)}
+.mode-brand{width:100%;max-width:560px;display:flex;align-items:center;gap:17px;margin:0 auto 24px;padding:0 0 19px;border-bottom:1px solid #c4cdd2}
+.mode-brand .logo-big{width:62px;height:62px;object-fit:contain;padding:5px;background:#f8f9f8;border:1px solid #bdc8cf;border-radius:4px}
+.mode-brand h2{font-family:Arial,sans-serif;color:#263b4d;font-size:30px;font-weight:800;letter-spacing:-.5px}
+.mode-brand p{margin-top:4px;color:#687985;font-size:13px}
+.mode-login{width:100%;max-width:560px;padding:27px 30px 24px;background:#f7f8f7;border:1px solid #c4cdd2;border-top:4px solid #b66a43;border-radius:5px;box-shadow:0 5px 15px rgba(35,52,65,.08)}
+.login-heading{margin:0 0 20px}
+.login-eyebrow{display:inline-block;margin-bottom:8px;padding:4px 8px;border:1px solid #d5c0b4;border-radius:3px;background:#f5ece7;color:#995b3b;font-size:10px;font-weight:800;letter-spacing:1px}
+.login-heading h3{margin:0 0 6px;padding:0;color:#263b4d;font-family:Arial,sans-serif;font-size:23px;font-weight:800}
+.login-heading p{margin:0;color:#6b7983;font-size:13px;line-height:1.55}
+.mode-login label{margin:14px 0 6px;color:#435766;font-size:12px;font-weight:700}
+.mode-login input{height:46px;margin:0 0 8px;padding:11px 13px;border:1px solid #bdc8cf;border-radius:4px;background:#fff;color:#263746;font-size:14px}
+.mode-login input:focus{border-color:#527895;box-shadow:0 0 0 2px rgba(54,91,120,.13)}
+.mode-submit{width:100%;height:47px;margin:14px 0 0;border:1px solid #29475f!important;border-radius:4px!important;background:#365b78!important;color:#fff!important;font-size:14px;font-weight:800;letter-spacing:.2px;box-shadow:0 2px 4px rgba(30,50,65,.13)}
+.mode-submit:hover{background:#29475f!important}
+.mode-hint{margin:13px 0 0;color:#687985;font-size:11px;text-align:center}
+.mode-login .entry-note{margin-top:19px;padding-top:13px;border-top:1px solid #d6dde1;color:#77838b;font-size:11px;line-height:1.5;text-align:center}
+#homeLoginMsg{margin:5px 0 0;min-height:18px}
+@media(max-width:700px){
+ body:has(#v-home:not(.hidden)) .wrap{padding:14px 9px 28px}
+ .mode-shell{display:flex;flex-direction:column;min-height:0}
+ .mode-sidebar{width:auto;flex:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:12px;border:0;border-bottom:1px solid #1b2b37}
+ .mode-sidebar::before{grid-column:1/-1;padding:1px 3px 5px}
+ .mode-sidebar .entry-mode{min-height:67px;flex-direction:column;justify-content:center;gap:4px;padding:7px 4px;text-align:center;font-size:11px}
+ .entry-icon{width:auto;flex:0 0 auto;font-size:19px}
+ .mode-main{padding:22px 13px 24px}
+ .mode-brand{margin-bottom:17px;padding-bottom:14px}
+ .mode-brand .logo-big{width:52px;height:52px}
+ .mode-brand h2{font-size:24px}
+ .mode-login{padding:21px 17px 19px}
+ .login-heading h3{font-size:20px}
+}
+@media(max-width:360px){.mode-main{padding:18px 10px}.mode-login{padding:18px 13px}.mode-brand h2{font-size:21px}}
 </style>
 
 </body>
