@@ -136,7 +136,7 @@ function makeAccessToken(session) {
     uid: session.uid,
     master: !!session.master,
     accessControl: true,
-    exp: Date.now() + 20 * 60 * 1000
+    exp: Date.now() + 12 * 3600 * 1000
   })).toString("base64url");
 
   return p + "." + crypto
@@ -261,11 +261,9 @@ async function getAccessControl() {
         ? saved.global.exemptIds.map(String)
         : []
     },
-
     accounts: saved.accounts && typeof saved.accounts === "object"
       ? saved.accounts
       : {},
-
     rules: Array.isArray(saved.rules) ? saved.rules : []
   };
 }
@@ -292,7 +290,6 @@ async function checkAccountAccess(userRecord, control) {
   if (!userRecord) return;
 
   let changed = false;
-
   const legacy = control.accounts[userRecord.id];
 
   if (legacy && legacy.until && Number(legacy.until) <= Date.now()) {
