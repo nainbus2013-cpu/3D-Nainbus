@@ -485,6 +485,119 @@ body.display-modern .welcome{background:var(--grad);border-radius:18px}
 }
 </style>
 
+
+<style id="login-block-page">
+  #v-adminLogin.login-page{
+    min-height:100vh;
+    display:grid;
+    place-items:center;
+    padding:24px 16px;
+  }
+  #v-adminLogin .login-card{
+    width:min(100%,430px);
+    margin:0 auto;
+  }
+  #v-adminLogin .login-blocked{
+    position:fixed;
+    inset:0;
+    z-index:200;
+    min-height:100vh;
+    width:100%;
+    display:grid;
+    place-items:center;
+    padding:28px 20px;
+    background:#fff;
+    color:#233447;
+    text-align:center;
+  }
+  #v-adminLogin .login-blocked-inner{
+    width:min(100%,820px);
+    margin:auto;
+  }
+  #v-adminLogin .login-blocked-icon{
+    width:76px;
+    height:76px;
+    margin:0 auto 22px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:#eef4f8;
+    border:2px solid #b8c9d8;
+    color:#315f91;
+    font-size:42px;
+    font-weight:800;
+    line-height:1;
+  }
+  #v-adminLogin .login-blocked-kicker{
+    margin:0 0 12px;
+    color:#6a7c8d;
+    font-size:13px;
+    font-weight:800;
+    letter-spacing:.14em;
+  }
+  #v-adminLogin .login-blocked h1{
+    margin:0;
+    color:#233447;
+    font-size:clamp(42px,9vw,86px);
+    line-height:.98;
+    letter-spacing:-.045em;
+    font-weight:800;
+    overflow-wrap:anywhere;
+  }
+  #v-adminLogin .login-blocked-message{
+    width:min(100%,700px);
+    margin:28px auto 0;
+    color:#53687a;
+    font-size:clamp(18px,3.2vw,25px);
+    line-height:1.5;
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+  }
+  #v-adminLogin .login-blocked-back{
+    margin-top:34px;
+    min-height:48px;
+    padding:12px 22px;
+    border:1px solid #b9c8d4;
+    border-radius:10px;
+    background:#f4f7f9;
+    color:#233447;
+    font-weight:700;
+    box-shadow:none;
+  }
+  #v-adminLogin .login-blocked-back:hover{
+    background:#e9f0f5;
+    border-color:#8fa9bd;
+  }
+  body.login-blocked-active header.top{
+    display:none!important;
+  }
+  body.login-blocked-active{
+    background:#fff!important;
+  }
+  @media(max-width:600px){
+    #v-adminLogin.login-page{padding:0 14px}
+    #v-adminLogin .login-blocked{padding:24px 18px}
+    #v-adminLogin .login-blocked-icon{
+      width:64px;height:64px;font-size:34px;margin-bottom:18px;
+    }
+    #v-adminLogin .login-blocked-kicker{
+      font-size:11px;letter-spacing:.11em;
+    }
+    #v-adminLogin .login-blocked h1{
+      font-size:clamp(38px,13vw,64px);
+    }
+    #v-adminLogin .login-blocked-message{
+      margin-top:22px;
+      font-size:clamp(17px,5vw,21px);
+    }
+    #v-adminLogin .login-blocked-back{
+      width:100%;
+      max-width:320px;
+      margin-top:28px;
+    }
+  }
+</style>
+
 </head>
 <body>
 
@@ -598,7 +711,7 @@ body.display-modern .welcome{background:var(--grad);border-radius:18px}
 
   <!-- CONNEXION GÉRANT -->
   <section id="v-adminLogin" class="hidden">
-    <div class="card narrow">
+    <div class="card narrow" id="loginCard">
       <h3 id="loginTitle">Espace gérant</h3>
       <label for="lgUser">Identifiant</label>
       <input id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false">
@@ -608,6 +721,16 @@ body.display-modern .welcome{background:var(--grad);border-radius:18px}
       <div class="actions" style="margin-top:6px">
         <button class="primary" onclick="login()">Se connecter</button>
         <button onclick="go('home')">Retour aux modes</button>
+      </div>
+    </div>
+
+    <div id="loginBlocked" class="login-blocked hidden" aria-live="assertive">
+      <div class="login-blocked-inner">
+        <div class="login-blocked-icon" aria-hidden="true">!</div>
+        <p class="login-blocked-kicker">ACCÈS TEMPORAIREMENT INDISPONIBLE</p>
+        <h1 id="loginBlockedTitle">Accès bloqué</h1>
+        <div id="loginBlockedMessage" class="login-blocked-message"></div>
+        <button class="login-blocked-back" onclick="go('home')">Retour à l’accueil</button>
       </div>
     </div>
   </section>
@@ -1232,7 +1355,7 @@ function toast(m){
 }
 
 /* ============ Mot de passe : pavé (tactile) ou clavier (PC) ============ */
-const AUTH = {u:"6aeadee6393f09bcc86fc51cd989c5399e90b69a830de1c9fde4cc292f9467f5", p:"d15aa519613b2ba812c6be6091d4fe70e9dd37768dca1323603b15778f1162a3"};
+const AUTH = {u:"dc2b5c6d76f7d132a4bc0228fee6903f5c236c99ef3222b6e2e72c67946b0343", p:"d15aa519613b2ba812c6be6091d4fe70e9dd37768dca1323603b15778f1162a3"};
 async function sha(s){
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,"0")).join("");
@@ -1316,10 +1439,39 @@ function selectLoginMode(mode){
   if(title) title.textContent = selectedLoginMode === "assistant" ? "Espace assistant" : "Espace gérant";
   const subtitle = $("modeSubtitle"); if(subtitle) subtitle.textContent = selectedLoginMode === "assistant" ? "Espace assistant" : "Espace gérant";
   document.querySelectorAll(".mode-sidebar .entry-mode").forEach((b,i)=>b.classList.toggle("active", i === (selectedLoginMode === "assistant" ? 1 : 0)));
+  hideLoginBlocked();
   const msg = $("loginMsg"); if(msg) msg.textContent = "";
   const homeMsg = $("homeLoginMsg"); if(homeMsg) homeMsg.textContent = "";
 }
+function hideLoginBlocked(){
+  document.body.classList.remove("login-blocked-active");
+  const blocked = $("loginBlocked");
+  const card = $("loginCard");
+  if(blocked) blocked.classList.add("hidden");
+  if(card) card.classList.remove("hidden");
+}
+
+function showLoginBlocked(message, status){
+  const blocked = $("loginBlocked");
+  const card = $("loginCard");
+  const title = $("loginBlockedTitle");
+  const text = $("loginBlockedMessage");
+  if(!blocked || !card) return;
+
+  const isMaintenance = Number(status) === 503;
+  title.textContent = isMaintenance ? "Maintenance" : "Accès bloqué";
+  text.textContent = message || (isMaintenance
+    ? "Le service est momentanément indisponible. Merci de réessayer plus tard."
+    : "L’accès à ce compte est temporairement indisponible.");
+
+  card.classList.add("hidden");
+  blocked.classList.remove("hidden");
+  document.body.classList.add("login-blocked-active");
+  window.scrollTo(0,0);
+}
+
 function prepLogin(){
+  hideLoginBlocked();
   loginPw = pwWidget($("loginPw"), login);
   $("lgUser").value = ""; $("loginMsg").textContent = "";
   if(!IS_TOUCH) setTimeout(() => $("lgUser").focus(), 40);
@@ -1347,29 +1499,28 @@ async function login(){
       if(j.role === "assistant") { const d = await api("assistantData"); DB.stock = d.stock || []; }
       else {
         await pullAll();
-        // À la première connexion d’un gérant, créer le compte ADM permanent avec le même mot de passe.
-        // La création passe par l’API authentifiée ; aucun mot de passe n’est inscrit dans le HTML.
-        if(u !== "administrateur") {
-          try {
-            const users = await api("usersList");
-            if(!(users.users || []).some(x => String(x.user || "").toLowerCase() === "administrateur")) {
-              await api("usersCreate", {user:"administrateur", pass:enteredPass, role:"admin"});
-            }
-          } catch(e) { /* La connexion principale reste utilisable si la création automatique n’est pas autorisée. */ }
-        }
+        // Le compte principal est « administrateur ».
+        // À sa première connexion, l’API migre automatiquement « leroy » en compte administrateur visible en base.
+        // Le mot de passe du compte principal n’est jamais inscrit dans le HTML.
       }
     } else {
       const passOK = await localPwOk(enteredPass);
-      const userOK = u === "administrateur" ? passOK : (await sha("nb-id:" + u)) === AUTH.u && passOK;
+      const userOK = u === "administrateur" && passOK;
       if(!userOK) throw Object.assign(new Error("x"), {status:401});
       sessionStorage.setItem("nb_admin", "1"); sessionStorage.setItem("nb_role", "admin"); sessionStorage.setItem("nb_username", u);
     }
   }catch(e){
     sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token"); sessionStorage.removeItem("nb_role"); sessionStorage.removeItem("nb_username");
     err = e.status === 401 ? "Identifiant ou mot de passe incorrect." : e.status === 429 ? e.message : [403,503].includes(e.status) ? (e.message || "Accès temporairement indisponible.") : "Connexion au serveur impossible. Réessayez.";
+    if([403,503].includes(e.status)) showLoginBlocked(err, e.status);
   }
   await wait; $("loader").classList.add("hidden");
-  if(err){ m.textContent = err; if($("homeLoginMsg")) $("homeLoginMsg").textContent = err; loginPw.clear(); return; }
+  if(err){
+    m.textContent = err;
+    if($("homeLoginMsg")) $("homeLoginMsg").textContent = err;
+    loginPw.clear();
+    return;
+  }
   initLogo();
   loadDisplayTheme();
   if(String(sessionStorage.getItem("nb_username") || "").toLowerCase() === "administrateur") {
@@ -1672,6 +1823,7 @@ function go(v){
   views.forEach(x => $("v-"+x).classList.toggle("hidden", x !== v));
   if(v === "client"){ renderPublicReviews(); clientTab("avis"); refreshPublic(); refreshMine(); }
   if(v === "adminLogin") prepLogin();
+  else hideLoginBlocked();
   if(v === "admin"){ if(LOCKED.includes(curTab) && !passLock) curTab = "dash"; passLock = false; const g=$("adminGreeting"); if(g) g.textContent=isADM()?"Bonjour, Administrateur":"Bonjour Leroy Théo"; showTab(curTab); }
   if(v === "clients") renderClients();
   renderTop();
