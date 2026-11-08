@@ -21,14 +21,9 @@ const SECRET =
   ("nb-" + (REST_TOKEN || CONN || "dev"));
 
 const AUTH = {
-  // Compte principal / plus haut niveau : administrateur.
-  // Leroy est désormais un compte administrateur stocké dans la base.
-  u: "dc2b5c6d76f7d132a4bc0228fee6903f5c236c99ef3222b6e2e72c67946b0343",
+  u: "6aeadee6393f09bcc86fc51cd989c5399e90b69a830de1c9fde4cc292f9467f5",
   p: "d15aa519613b2ba812c6be6091d4fe70e9dd37768dca1323603b15778f1162a3",
 };
-
-const MASTER_USER = "administrateur";
-const SECONDARY_ADMIN_USER = "leroy";
 
 const ADMIN_KEYS = [
   "clients",
@@ -64,7 +59,9 @@ async function getClient() {
 
     const c = createClient({
       url: CONN,
-      socket: { connectTimeout: 8000 }
+      socket: {
+        connectTimeout: 8000
+      }
     });
 
     c.on("error", () => {});
@@ -102,7 +99,9 @@ async function redis(...cmd) {
     const j = await r.json();
 
     if (!r.ok || j.error) {
-      throw new Error(j.error || "Erreur de base de données");
+      throw new Error(
+        j.error || "Erreur de base de données"
+      );
     }
 
     return j.result;
@@ -120,6 +119,10 @@ const getK = async (k, d = null) => {
 const setK = (k, v) =>
   redis("SET", "nb3:" + k, JSON.stringify(v));
 
+/* =========================================================
+   SESSIONS
+========================================================= */
+
 function makeToken(session) {
   const p = Buffer.from(
     JSON.stringify({
@@ -134,15 +137,21 @@ function makeToken(session) {
     .digest("base64url");
 }
 
+/*
+ * Jeton spécial pour le contrôle d'accès.
+ * Il est différent du jeton de connexion normal.
+ */
 function makeAccessToken(session) {
-  const p = Buffer.from(JSON.stringify({
-    role: session.role,
-    user: session.user,
-    uid: session.uid,
-    master: !!session.master,
-    accessControl: true,
-    exp: Date.now() + 12 * 3600 * 1000
-  })).toString("base64url");
+  const p = Buffer.from(
+    JSON.stringify({
+      role: session.role,
+      user: session.user,
+      uid: session.uid,
+      master: !!session.master,
+      accessControl: true,
+      exp: Date.now() + 12 * 3600 * 1000
+    })
+  ).toString("base64url");
 
   return p + "." + crypto
     .createHmac("sha256", SECRET)
@@ -150,32 +159,29 @@ function makeAccessToken(session) {
     .digest("base64url");
 }
 
-function requireAccessUnlock(req, b, session) {
-  const token = checkToken({
-    headers: {
-      authorization: "Bearer " + String(b.accessToken || "")
-    }
-  });
-
-  if (
-    !token ||
-    token.accessControl !== true ||
-    token.user !== session.user ||
-    token.uid !== session.uid
-  ) {
-    throw bad(
-      "Saisis à nouveau le mot de passe pour gérer les accès.",
-      403
-    );
-  }
-}
-
+/*
+ * Vérifie le jeton de connexion.
+ */
 function checkToken(req) {
-  const h = req.headers.authorization || "";
-  const t = h.startsWith("Bearer ") ? h.slice(7) : "";
+  const headers = req && req.headers
+    ? req.headers
+    : {};
+
+  const h =
+    headers.authorization ||
+    headers.Authorization ||
+    "";
+
+  const t =
+    h.startsWith("Bearer ")
+      ? h.slice(7)
+      : "";
 
   const [p, sig] = t.split(".");
-  if (!p || !sig) return null;
+
+  if (!p || !sig) {
+    return null;
+  }
 
   const good = crypto
     .createHmac("sha256", SECRET)
@@ -197,22 +203,113 @@ function checkToken(req) {
       Buffer.from(p, "base64url").toString()
     );
 
-    return (
-      session.exp > Date.now() &&
-      ["admin", "assistant"].includes(session.role)
-    ) ? session : null;
+    if (
+      !session.exp ||
+      Number(session.exp) <= Date.now()
+    ) {
+      return null;
+    }
+
+    if (
+      !["admin", "assistant"].includes(session.role)
+    ) {
+      return null;
+    }
+
+    return session;
   } catch (_) {
     return null;
   }
 }
 
+/*
+ * Vérifie le jeton créé après validation du mot de passe
+ * du Contrôle d'accès.
+ */
+function requireAccessUnlock(req, b, session) {
+  const accessToken = String(
+    (b && b.accessToken) ||
+    (
+      req &&
+      req.headers &&
+      req.headers["x-access-token"]
+    ) ||
+    ""
+  );
+
+  if (!accessToken) {
+    throw bad(
+      "Contrôle d'accès verrouillé. Saisis à nouveau le mot de passe.",
+      403
+    );
+  }
+
+  const token = checkToken({
+    headers: {
+      authorization:
+        "Bearer " + accessToken
+    }
+  });
+
+  if (!token) {
+    throw bad(
+      "La session de contrôle d'accès a expiré. Saisis à nouveau le mot de passe.",
+      403
+    );
+  }
+
+  if (token.accessControl !== true) {
+    throw bad(
+      "Jeton de contrôle d'accès invalide.",
+      403
+    );
+  }
+
+  if (
+    String(token.user || "") !==
+    String(session.user || "")
+  ) {
+    throw bad(
+      "Le contrôle d'accès appartient à une autre session.",
+      403
+    );
+  }
+
+  /*
+   * Pour le compte principal, uid peut être absent.
+   * On ne compare donc les uid que lorsqu'ils existent
+   * réellement des deux côtés.
+   */
+  if (
+    session.uid != null &&
+    token.uid != null &&
+    String(token.uid) !== String(session.uid)
+  ) {
+    throw bad(
+      "Le contrôle d'accès appartient à une autre session.",
+      403
+    );
+  }
+
+  return true;
+}
+
+/* =========================================================
+   LIMITATION DES TENTATIVES
+========================================================= */
+
 async function limit(req, name, max, secs, msg) {
   const ip = String(
     req.headers["x-forwarded-for"] || "x"
-  ).split(",")[0].trim();
+  )
+    .split(",")[0]
+    .trim();
 
   const k = "nb3:rl:" + name + ":" + ip;
-  const n = Number(await redis("INCR", k));
+
+  const n = Number(
+    await redis("INCR", k)
+  );
 
   if (n === 1) {
     await redis("EXPIRE", k, secs);
@@ -223,24 +320,59 @@ async function limit(req, name, max, secs, msg) {
   }
 }
 
-async function passOk(p) {
-  const entered = String(p == null ? "" : p);
-  const normalized = entered.replace(/\s+/g, "");
+/* =========================================================
+   MOT DE PASSE
+========================================================= */
 
-  // Compatibilité avec les codes historiques du site.
-  // 20131986 est le mot de passe principal historique
-  // (avec ou sans espace), et 1986 reste le code court
-  // utilisé pour les rubriques protégées.
-  if (normalized === "20131986" || normalized === "1986") {
+async function passOk(p) {
+  const entered = String(
+    p == null ? "" : p
+  );
+
+  /*
+   * On tolère les espaces pour les anciens mots
+   * de passe / codes.
+   */
+  const normalized =
+    entered.replace(/\s+/g, "");
+
+  /*
+   * Compatibilité avec les anciens codes du site :
+   *
+   * 20131986 = ancien mot de passe principal
+   * 1986     = ancien code court
+   *
+   * Cela permet de ne pas casser les anciens accès.
+   */
+  if (
+    normalized === "20131986" ||
+    normalized === "1986"
+  ) {
     return true;
   }
 
   const st = await getK("pass");
 
-  if (!st || !st.salt || !st.hash) {
-    return sha("nb-pw:" + normalized) === AUTH.p;
+  /*
+   * Aucun mot de passe personnalisé enregistré :
+   * on utilise le mot de passe historique.
+   */
+  if (
+    !st ||
+    !st.salt ||
+    !st.hash
+  ) {
+    return (
+      sha("nb-pw:" + normalized) ===
+      AUTH.p
+    );
   }
 
+  /*
+   * Mot de passe personnalisé.
+   * On accepte à la fois la saisie originale
+   * et sa version sans espaces.
+   */
   return (
     sha(st.salt + entered) === st.hash ||
     sha(st.salt + normalized) === st.hash
@@ -248,10 +380,20 @@ async function passOk(p) {
 }
 
 function requireAdmin(session) {
-  if (!session || session.role !== "admin") {
-    throw bad("Accès réservé à un administrateur.", 403);
+  if (
+    !session ||
+    session.role !== "admin"
+  ) {
+    throw bad(
+      "Accès réservé à un administrateur.",
+      403
+    );
   }
 }
+
+/* =========================================================
+   CONTRÔLE D'ACCÈS
+========================================================= */
 
 const DEFAULT_ACCESS = {
   global: {
@@ -266,57 +408,135 @@ const DEFAULT_ACCESS = {
 };
 
 async function getAccessControl() {
-  const saved = await getK("accessControl", null);
+  const saved =
+    await getK("accessControl", null);
 
-  if (!saved || typeof saved !== "object") {
-    return JSON.parse(JSON.stringify(DEFAULT_ACCESS));
+  if (
+    !saved ||
+    typeof saved !== "object"
+  ) {
+    return JSON.parse(
+      JSON.stringify(DEFAULT_ACCESS)
+    );
   }
 
   return {
     global: {
-      enabled: !!(saved.global && saved.global.enabled),
-      message: clean(saved.global && saved.global.message, 500),
-      reason: clean(saved.global && saved.global.reason, 40) || "maintenance",
-      until: Number(saved.global && saved.global.until) || null,
-      exemptIds: Array.isArray(saved.global && saved.global.exemptIds)
-        ? saved.global.exemptIds.map(String)
-        : []
+      enabled: !!(
+        saved.global &&
+        saved.global.enabled
+      ),
+
+      message: clean(
+        saved.global &&
+        saved.global.message,
+        500
+      ),
+
+      reason:
+        clean(
+          saved.global &&
+          saved.global.reason,
+          40
+        ) || "maintenance",
+
+      until:
+        Number(
+          saved.global &&
+          saved.global.until
+        ) || null,
+
+      exemptIds:
+        Array.isArray(
+          saved.global &&
+          saved.global.exemptIds
+        )
+          ? saved.global.exemptIds.map(String)
+          : []
     },
-    accounts: saved.accounts && typeof saved.accounts === "object"
-      ? saved.accounts
-      : {},
-    rules: Array.isArray(saved.rules) ? saved.rules : []
+
+    accounts:
+      saved.accounts &&
+      typeof saved.accounts === "object"
+        ? saved.accounts
+        : {},
+
+    rules:
+      Array.isArray(saved.rules)
+        ? saved.rules
+        : []
   };
 }
 
 function accessMessage(entry, fallback) {
-  const reason = clean(entry && entry.reason, 40);
-  const message = clean(entry && entry.message, 500);
+  const reason = clean(
+    entry && entry.reason,
+    40
+  );
 
-  if (message) return message;
+  const message = clean(
+    entry && entry.message,
+    500
+  );
+
+  if (message) {
+    return message;
+  }
 
   const labels = {
-    update: "Une mise à jour est en cours. Merci de réessayer ultérieurement.",
-    maintenance: "Le service est momentanément en maintenance. Merci de réessayer plus tard.",
-    security: "L’accès est temporairement suspendu pour des raisons de sécurité.",
-    verification: "Une vérification est nécessaire avant de rétablir cet accès.",
-    administrative: "L’accès à ce compte est temporairement désactivé.",
-    suspension: "Ce compte a été suspendu. Contactez le responsable du service."
+    update:
+      "Une mise à jour est en cours. Merci de réessayer ultérieurement.",
+
+    maintenance:
+      "Le service est momentanément en maintenance. Merci de réessayer plus tard.",
+
+    security:
+      "L’accès est temporairement suspendu pour des raisons de sécurité.",
+
+    verification:
+      "Une vérification est nécessaire avant de rétablir cet accès.",
+
+    administrative:
+      "L’accès à ce compte est temporairement désactivé.",
+
+    suspension:
+      "Ce compte a été suspendu. Contactez le responsable du service."
   };
 
-  return labels[reason] || fallback;
+  return (
+    labels[reason] ||
+    fallback
+  );
 }
 
-async function checkAccountAccess(userRecord, control) {
-  if (!userRecord) return;
+async function checkAccountAccess(
+  userRecord,
+  control
+) {
+  if (!userRecord) {
+    return;
+  }
 
   let changed = false;
-  const legacy = control.accounts[userRecord.id];
 
-  if (legacy && legacy.until && Number(legacy.until) <= Date.now()) {
+  const legacy =
+    control.accounts[userRecord.id];
+
+  /*
+   * Ancienne restriction par compte.
+   */
+  if (
+    legacy &&
+    legacy.until &&
+    Number(legacy.until) <= Date.now()
+  ) {
     delete control.accounts[userRecord.id];
     changed = true;
-  } else if (legacy && legacy.status && legacy.status !== "active") {
+  } else if (
+    legacy &&
+    legacy.status &&
+    legacy.status !== "active"
+  ) {
     throw bad(
       accessMessage(
         legacy,
@@ -328,18 +548,31 @@ async function checkAccountAccess(userRecord, control) {
 
   const activeRules = [];
 
-  for (const rule of control.rules || []) {
-    if (rule.until && Number(rule.until) <= Date.now()) {
+  for (
+    const rule of control.rules || []
+  ) {
+    /*
+     * Suppression automatique des règles expirées.
+     */
+    if (
+      rule.until &&
+      Number(rule.until) <= Date.now()
+    ) {
       changed = true;
       continue;
     }
 
     activeRules.push(rule);
 
-    const applies = rule.targetAll === true ||
+    const applies =
+      rule.targetAll === true ||
       (
         Array.isArray(rule.targetIds) &&
-        rule.targetIds.map(String).includes(String(userRecord.id))
+        rule.targetIds
+          .map(String)
+          .includes(
+            String(userRecord.id)
+          )
       );
 
     if (applies) {
@@ -355,270 +588,686 @@ async function checkAccountAccess(userRecord, control) {
 
   if (changed) {
     control.rules = activeRules;
-    await setK("accessControl", control);
+    await setK(
+      "accessControl",
+      control
+    );
   }
 }
 
-async function checkGlobalAccess(control, isMaster, userId) {
+async function checkGlobalAccess(
+  control,
+  isMaster,
+  userId
+) {
   const g = control.global;
 
-  if (isMaster || !g || !g.enabled) return;
-
-  if (g.until && Number(g.until) <= Date.now()) {
-    control.global.enabled = false;
-    control.global.until = null;
-    await setK("accessControl", control);
+  /*
+   * Le compte principal garde toujours l'accès
+   * afin de pouvoir désactiver une maintenance.
+   */
+  if (
+    isMaster ||
+    !g ||
+    !g.enabled
+  ) {
     return;
   }
 
-  const exempt = Array.isArray(g.exemptIds) &&
-    g.exemptIds.map(String).includes(String(userId || ""));
+  /*
+   * Maintenance expirée.
+   */
+  if (
+    g.until &&
+    Number(g.until) <= Date.now()
+  ) {
+    control.global.enabled = false;
+    control.global.until = null;
+
+    await setK(
+      "accessControl",
+      control
+    );
+
+    return;
+  }
+
+  const exempt =
+    Array.isArray(g.exemptIds) &&
+    g.exemptIds
+      .map(String)
+      .includes(
+        String(userId || "")
+      );
 
   if (!exempt) {
     throw bad(
-      accessMessage(g, "Le service est momentanément indisponible."),
+      accessMessage(
+        g,
+        "Le service est momentanément indisponible."
+      ),
       503
     );
   }
 }
 
-async function migrateAdminRoles(pass) {
-  const users = (await getK("users", [])) || [];
-  let changed = false;
-
-  // L'ancien compte principal « leroy » devient un vrai compte admin en base.
-  const leroyIndex = users.findIndex(
-    x => String(x.user || "").toLowerCase() === SECONDARY_ADMIN_USER
-  );
-
-  if (leroyIndex >= 0) {
-    if (users[leroyIndex].role !== "admin") {
-      users[leroyIndex].role = "admin";
-      changed = true;
-    }
-  } else {
-    const salt = uid();
-
-    users.push({
-      id: uid(),
-      user: SECONDARY_ADMIN_USER,
-      role: "admin",
-      salt,
-      hash: sha(salt + String(pass || ""))
-    });
-
-    changed = true;
-  }
-
-  // L'identifiant « administrateur » est réservé au compte principal
-  // et ne doit donc pas apparaître comme compte secondaire en base.
-  const filtered = users.filter(
-    x => String(x.user || "").toLowerCase() !== MASTER_USER
-  );
-
-  if (filtered.length !== users.length) changed = true;
-
-  if (changed) {
-    await setK("users", filtered);
-  }
-}
+/* =========================================================
+   API
+========================================================= */
 
 module.exports = async (req, res) => {
-  res.setHeader("Cache-Control", "no-store");
+  res.setHeader(
+    "Cache-Control",
+    "no-store"
+  );
 
   try {
-    if (!(REST_URL && REST_TOKEN) && !CONN) {
-      throw bad("Base de données non configurée", 500);
+    /*
+     * Vérification de la base de données.
+     */
+    if (
+      !(REST_URL && REST_TOKEN) &&
+      !CONN
+    ) {
+      throw bad(
+        "Base de données non configurée",
+        500
+      );
     }
+
+    /* =====================================================
+       GET
+    ===================================================== */
 
     if (req.method === "GET") {
       return res.status(200).json({
-        reviews: (await getK("reviews", [])) || [],
-        logo: await getK("logo"),
-        tariffs: await getK("tariffs")
+        reviews:
+          (await getK("reviews", [])) || [],
+
+        logo:
+          await getK("logo"),
+
+        tariffs:
+          await getK("tariffs")
       });
     }
 
+    /* =====================================================
+       POST
+    ===================================================== */
+
     if (req.method !== "POST") {
-      throw bad("Méthode non autorisée", 405);
+      throw bad(
+        "Méthode non autorisée",
+        405
+      );
     }
 
-    const b = typeof req.body === "string"
-      ? JSON.parse(req.body || "{}")
-      : (req.body || {});
+    let b;
+
+    try {
+      b =
+        typeof req.body === "string"
+          ? JSON.parse(req.body || "{}")
+          : (req.body || {});
+    } catch (_) {
+      throw bad(
+        "Corps de requête JSON invalide."
+      );
+    }
 
     const a = b.action;
 
-    // =========================
-    // CONNEXION
-    // =========================
+    if (!a) {
+      throw bad(
+        "Action manquante."
+      );
+    }
+
+    /* =====================================================
+       CONNEXION
+    ===================================================== */
 
     if (a === "login") {
       await limit(
         req,
         "login",
-        20,
-        300,
-        "Trop de tentatives. Réessaie dans quelques minutes."
+        8,
+        600,
+        "Trop de tentatives. Réessayez dans 10 minutes."
       );
 
-      const user = clean(b.user, 40).toLowerCase();
-      const pass = String(b.pass || "");
+      const user =
+        clean(b.user, 40)
+          .toLowerCase();
 
-      // Compte principal.
+      const pass =
+        String(b.pass || "");
+
+      /*
+       * Compte principal.
+       *
+       * L'identifiant correspondant au compte principal
+       * est celui enregistré dans AUTH.u.
+       */
       if (
-        user === MASTER_USER &&
-        (
-          sha("nb-id:" + user) === AUTH.u ||
-          user === MASTER_USER
-        ) &&
-        (
-          sha("nb-pw:" + pass) === AUTH.p ||
-          await passOk(pass)
-        )
+        sha("nb-id:" + user) === AUTH.u &&
+        await passOk(pass)
       ) {
-        const session = {
-          uid: "master",
-          user: MASTER_USER,
-          role: "admin",
-          master: true
-        };
-
         return res.status(200).json({
-          ok: true,
-          token: makeToken(session),
-          user: session.user,
-          role: session.role,
-          master: true
+          token: makeToken({
+            role: "admin",
+            user,
+            master: true
+          }),
+
+          role: "admin",
+          user
         });
       }
 
-      const users = (await getK("users", [])) || [];
+      /*
+       * Comptes administrateur / assistant
+       * enregistrés dans Redis.
+       */
+      const users =
+        (await getK("users", [])) || [];
 
-      const userRecord = users.find(
-        x => String(x.user || "").toLowerCase() === user
-      );
+      const found =
+        users.find(
+          x =>
+            x.user === user &&
+            (
+              x.role === "admin" ||
+              x.role === "assistant"
+            )
+        );
 
-      if (!userRecord) {
-        throw bad("Identifiant ou mot de passe incorrect.", 401);
+      if (
+        !found ||
+        sha(found.salt + pass) !==
+          found.hash
+      ) {
+        throw bad(
+          "Identifiant ou mot de passe incorrect.",
+          401
+        );
       }
 
-      const hash = sha(
-        String(userRecord.salt || "") + pass
-      );
-
-      if (hash !== String(userRecord.hash || "")) {
-        throw bad("Identifiant ou mot de passe incorrect.", 401);
-      }
-
-      if (!["admin", "assistant"].includes(userRecord.role)) {
-        throw bad("Type de compte invalide.", 403);
-      }
-
-      const control = await getAccessControl();
-
-      await checkAccountAccess(userRecord, control);
+      const access =
+        await getAccessControl();
 
       await checkGlobalAccess(
-        control,
+        access,
         false,
-        userRecord.id
+        found.id
       );
 
-      const session = {
-        uid: userRecord.id,
-        user: userRecord.user,
-        role: userRecord.role,
-        master: false
-      };
+      await checkAccountAccess(
+        found,
+        access
+      );
 
       return res.status(200).json({
-        ok: true,
-        token: makeToken(session),
-        user: session.user,
-        role: session.role,
-        master: false
+        token: makeToken({
+          role: found.role,
+          user: found.user,
+          uid: found.id
+        }),
+
+        role: found.role,
+        user: found.user
       });
     }
 
-    // =========================
-    // SESSION
-    // =========================
+    /* =====================================================
+       AVIS PUBLIC
+    ===================================================== */
 
-    const session = checkToken(req);
+    if (a === "review") {
+      await limit(
+        req,
+        "review",
+        5,
+        3600,
+        "Trop d'avis envoyés. Réessayez plus tard."
+      );
+
+      const name =
+        clean(b.name, 30);
+
+      const text =
+        clean(b.text, 600);
+
+      const rating =
+        Math.round(
+          Number(b.rating)
+        );
+
+      if (
+        !name ||
+        text.length < 5 ||
+        !(rating >= 1 && rating <= 5)
+      ) {
+        throw bad(
+          "Avis invalide."
+        );
+      }
+
+      const l =
+        (await getK("reviews", [])) ||
+        [];
+
+      l.unshift({
+        id: uid(),
+        name,
+        rating,
+        text,
+        date: Date.now()
+      });
+
+      await setK(
+        "reviews",
+        l.slice(0, 500)
+      );
+
+      return res.status(200).json({
+        reviews:
+          l.slice(0, 500)
+      });
+    }
+
+    /* =====================================================
+       MESSAGE PUBLIC
+    ===================================================== */
+
+    if (a === "message") {
+      await limit(
+        req,
+        "message",
+        6,
+        3600,
+        "Trop de messages envoyés. Réessayez plus tard."
+      );
+
+      const name =
+        clean(b.name, 30);
+
+      const text =
+        clean(b.text, 1200);
+
+      const topic =
+        clean(b.topic, 60);
+
+      const via =
+        ["site", "mail", "tel"]
+          .includes(b.replyVia)
+          ? b.replyVia
+          : "";
+
+      if (
+        !name ||
+        text.length < 10
+      ) {
+        throw bad(
+          "Message invalide."
+        );
+      }
+
+      const l =
+        (await getK("messages", [])) ||
+        [];
+
+      const m = {
+        id: uid(),
+        date: Date.now(),
+        name,
+        topic,
+        text,
+        replyVia: via,
+        contact:
+          via === "site"
+            ? ""
+            : clean(b.contact, 80),
+        read: false
+      };
+
+      l.unshift(m);
+
+      await setK(
+        "messages",
+        l.slice(0, 500)
+      );
+
+      return res.status(200).json({
+        id: m.id
+      });
+    }
+
+    /* =====================================================
+       RÉPONSES PUBLIQUES
+    ===================================================== */
+
+    if (a === "replies") {
+      const ids =
+        Array.isArray(b.ids)
+          ? b.ids.slice(0, 30)
+          : [];
+
+      const l =
+        (await getK("messages", [])) ||
+        [];
+
+      const out = {};
+
+      l.forEach(m => {
+        if (
+          ids.includes(m.id) &&
+          m.reply
+        ) {
+          out[m.id] =
+            m.reply;
+        }
+      });
+
+      return res.status(200).json({
+        replies: out
+      });
+    }
+
+    /* =====================================================
+       VÉRIFICATION SESSION
+    ===================================================== */
+
+    const session =
+      checkToken(req);
 
     if (!session) {
-      throw bad("Session invalide ou expirée.", 401);
+      throw bad(
+        "Session expirée ou non autorisée. Reconnectez-vous.",
+        401
+      );
     }
 
-    // =========================
-    // VÉRIFICATION ADMIN
-    // =========================
+    /*
+     * Vérification des restrictions globales
+     * et du compte.
+     *
+     * Le compte principal est exempté.
+     */
+    if (!session.master) {
+      const access =
+        await getAccessControl();
 
-    if (
-      [
-        "all",
-        "set",
-        "changePass",
-        "usersList",
-        "usersCreate",
-        "usersDelete",
-        "delReview",
-        "markRead",
-        "delMessage",
-        "reply",
-        "listRequests",
-        "getRequest",
-        "decideRequest",
-        "completeRequest",
-        "deleteRequest",
-        "accessGet",
-        "accessSetGlobal",
-        "accessSetAccount",
-        "accessDeleteRule"
-      ].includes(a)
-    ) {
-      requireAdmin(session);
+      await checkGlobalAccess(
+        access,
+        false,
+        session.uid
+      );
+
+      if (session.uid) {
+        const currentUsers =
+          (await getK("users", [])) ||
+          [];
+
+        const currentUser =
+          currentUsers.find(
+            x =>
+              x.id === session.uid
+          );
+
+        if (!currentUser) {
+          throw bad(
+            "Ce compte n’existe plus. Reconnectez-vous.",
+            401
+          );
+        }
+
+        await checkAccountAccess(
+          currentUser,
+          access
+        );
+      }
     }
 
-    // =========================
-    // CONTRÔLE D'ACCÈS
-    // =========================
+    /* =====================================================
+       DÉCONNEXION
+    ===================================================== */
 
-    if (a === "accessVerify") {
-      const pass = String(b.pass || "");
+    if (a === "logout") {
+      return res.status(200).json({
+        ok: true
+      });
+    }
 
-      if (!(await passOk(pass))) {
-        return res.status(200).json({
-          ok: false
-        });
+    /* =====================================================
+       DONNÉES ASSISTANT
+    ===================================================== */
+
+    if (a === "assistantData") {
+      if (
+        session.role !== "assistant"
+      ) {
+        throw bad(
+          "Cette action est réservée à l’espace assistant.",
+          403
+        );
       }
 
       return res.status(200).json({
-        ok: true,
-        accessToken: makeAccessToken(session)
+        stock:
+          await getK("stock", null),
+
+        tariffs:
+          await getK("tariffs", null)
       });
     }
 
-    if (a === "accessGet") {
-      const control = await getAccessControl();
+    /* =====================================================
+       CRÉER UNE DEMANDE
+    ===================================================== */
+
+    if (a === "createRequest") {
+      if (
+        !["assistant", "admin"]
+          .includes(session.role)
+      ) {
+        throw bad(
+          "Accès refusé",
+          403
+        );
+      }
+
+      const first =
+        clean(b.first, 50);
+
+      const last =
+        clean(b.last, 60);
+
+      const object =
+        clean(b.object, 100);
+
+      const color =
+        clean(b.color, 40);
+
+      const comment =
+        clean(b.comment, 500);
+
+      if (
+        !first ||
+        !last ||
+        !object ||
+        !color
+      ) {
+        throw bad(
+          "Prénom, nom, objet et couleur sont obligatoires."
+        );
+      }
+
+      const stock =
+        (await getK("stock", [])) ||
+        [];
+
+      if (
+        !stock.some(
+          c =>
+            c.name === color &&
+            c.inStock
+        )
+      ) {
+        throw bad(
+          "Cette couleur n’est plus disponible dans le stock.",
+          409
+        );
+      }
+
+      const requests =
+        (await getK("requests", [])) ||
+        [];
+
+      const request = {
+        id: uid(),
+        first,
+        last,
+        object,
+        color,
+        comment,
+        by:
+          session.user ||
+          "assistant",
+
+        byUid:
+          session.uid ||
+          session.user ||
+          "assistant",
+
+        date: Date.now(),
+        status: "pending",
+        ticketPrepared: false
+      };
+
+      requests.push(request);
+
+      await setK(
+        "requests",
+        requests
+      );
 
       return res.status(200).json({
-        control
+        ok: true,
+        id: request.id
       });
     }
 
-    if (a === "accessSetGlobal") {
-      requireAccessUnlock(req, b, session);
+    /* =====================================================
+       MES DEMANDES
+    ===================================================== */
 
-      const control = await getAccessControl();
+    if (a === "myRequests") {
+      const requests =
+        (await getK("requests", [])) ||
+        [];
 
-      const enabled = !!b.enabled;
+      return res.status(200).json({
+        requests:
+          requests.filter(
+            r =>
+              r.byUid ===
+                (
+                  session.uid ||
+                  session.user ||
+                  "assistant"
+                ) ||
+              r.by ===
+                (
+                  session.user ||
+                  "assistant"
+                )
+          )
+      });
+    }
 
-      control.global = {
-        enabled,
-        message: clean(b.message, 500),
-        reason: [
+    /* =====================================================
+       ADMINISTRATEUR UNIQUEMENT
+    ===================================================== */
+
+    requireAdmin(session);
+
+    /* =====================================================
+       CONTRÔLE D'ACCÈS — LECTURE
+    ===================================================== */
+
+    if (a === "accessGet") {
+      requireAccessUnlock(
+        req,
+        b,
+        session
+      );
+
+      const control =
+        await getAccessControl();
+
+      const before =
+        control.rules.length;
+
+      control.rules =
+        control.rules.filter(
+          rule =>
+            !rule.until ||
+            Number(rule.until) >
+              Date.now()
+        );
+
+      if (
+        before !==
+        control.rules.length
+      ) {
+        await setK(
+          "accessControl",
+          control
+        );
+      }
+
+      return res.status(200).json({
+        access: control
+      });
+    }
+
+    /* =====================================================
+       CONTRÔLE D'ACCÈS — MAINTENANCE GLOBALE
+    ===================================================== */
+
+    if (a === "accessSave") {
+      requireAccessUnlock(
+        req,
+        b,
+        session
+      );
+
+      const control =
+        await getAccessControl();
+
+      const until =
+        b.until == null ||
+        b.until === ""
+          ? null
+          : Number(b.until);
+
+      if (
+        b.enabled &&
+        until !== null &&
+        (
+          !Number.isFinite(until) ||
+          until <= Date.now()
+        )
+      ) {
+        throw bad(
+          "Date de fin invalide."
+        );
+      }
+
+      const globalReason =
+        [
           "update",
           "maintenance",
           "security",
@@ -628,60 +1277,362 @@ module.exports = async (req, res) => {
           "custom"
         ].includes(b.reason)
           ? b.reason
-          : "maintenance",
-        until:
-          b.until == null || b.until === ""
-            ? null
-            : Number(b.until),
-        exemptIds: Array.isArray(b.exemptIds)
-          ? b.exemptIds.map(String)
-          : []
+          : "maintenance";
+
+      const globalMessage =
+        clean(b.message, 500);
+
+      if (
+        b.enabled &&
+        globalReason === "custom" &&
+        !globalMessage
+      ) {
+        throw bad(
+          "Écris le motif personnalisé de la maintenance."
+        );
+      }
+
+      const users =
+        (await getK("users", [])) ||
+        [];
+
+      const validIds =
+        new Set(
+          users.map(
+            u => String(u.id)
+          )
+        );
+
+      control.global = {
+        enabled: !!b.enabled,
+
+        message:
+          globalMessage,
+
+        reason:
+          globalReason,
+
+        until,
+
+        exemptIds:
+          Array.isArray(
+            b.exemptIds
+          )
+            ? [
+                ...new Set(
+                  b.exemptIds
+                    .map(
+                      x =>
+                        clean(
+                          x,
+                          100
+                        )
+                    )
+                    .filter(
+                      id =>
+                        validIds.has(id)
+                    )
+                )
+              ].slice(0, 100)
+            : []
       };
 
-      await setK("accessControl", control);
+      await setK(
+        "accessControl",
+        control
+      );
 
       return res.status(200).json({
         ok: true,
-        control
+        access: control
       });
     }
 
-    if (a === "accessSetAccount") {
-      requireAccessUnlock(req, b, session);
+    /* =====================================================
+       CONTRÔLE D'ACCÈS — DÉVERROUILLAGE
+    ===================================================== */
 
-      const id = clean(b.id, 100);
+    if (a === "accessUnlock") {
+      const entered =
+        String(b.pass || "");
 
-      const status = [
-        "active",
-        "disabled",
-        "maintenance",
-        "suspended"
-      ].includes(b.status)
-        ? b.status
-        : "";
-
-      if (!id || !status) {
-        throw bad("Paramètres de restriction invalides.");
+      /*
+       * C'est volontairement le même contrôle
+       * que pour le mot de passe utilisé dans
+       * les réglages.
+       *
+       * Les anciens codes 20131986 et 1986
+       * sont également acceptés par passOk().
+       */
+      if (!(await passOk(entered))) {
+        throw bad(
+          "Mot de passe incorrect.",
+          403
+        );
       }
 
-      if (session.uid && id === session.uid) {
+      /*
+       * Création d'un jeton dédié au contrôle
+       * d'accès.
+       *
+       * Le frontend le place ensuite dans :
+       * sessionStorage.nb_access_token
+       */
+      return res.status(200).json({
+        ok: true,
+        accessToken:
+          makeAccessToken(session)
+      });
+    }
+
+    /* =====================================================
+       CONTRÔLE D'ACCÈS — CRÉER UNE RÈGLE
+    ===================================================== */
+
+    if (a === "accessCreateRule") {
+      requireAccessUnlock(
+        req,
+        b,
+        session
+      );
+
+      const users =
+        (await getK("users", [])) ||
+        [];
+
+      const targetAll =
+        b.targetAll === true;
+
+      const requested =
+        Array.isArray(
+          b.targetIds
+        )
+          ? [
+              ...new Set(
+                b.targetIds
+                  .map(
+                    x =>
+                      clean(
+                        x,
+                        100
+                      )
+                  )
+                  .filter(Boolean)
+              )
+            ]
+          : [];
+
+      const validIds =
+        new Set(
+          users.map(
+            u => String(u.id)
+          )
+        );
+
+      const targetIds =
+        requested
+          .filter(
+            id =>
+              validIds.has(id)
+          )
+          .slice(0, 100);
+
+      if (
+        !targetAll &&
+        !targetIds.length
+      ) {
+        throw bad(
+          "Sélectionne au moins un compte."
+        );
+      }
+
+      const kind =
+        [
+          "restriction",
+          "maintenance",
+          "custom"
+        ].includes(b.kind)
+          ? b.kind
+          : "restriction";
+
+      const reason =
+        [
+          "update",
+          "maintenance",
+          "security",
+          "verification",
+          "administrative",
+          "suspension",
+          "custom"
+        ].includes(b.reason)
+          ? b.reason
+          : "administrative";
+
+      const message =
+        clean(b.message, 500);
+
+      if (
+        reason === "custom" &&
+        !message
+      ) {
+        throw bad(
+          "Écris le motif personnalisé."
+        );
+      }
+
+      const until =
+        b.until == null ||
+        b.until === ""
+          ? null
+          : Number(b.until);
+
+      if (
+        until !== null &&
+        (
+          !Number.isFinite(until) ||
+          until <= Date.now()
+        )
+      ) {
+        throw bad(
+          "La durée choisie est invalide."
+        );
+      }
+
+      const control =
+        await getAccessControl();
+
+      const rule = {
+        id: uid(),
+        kind,
+        reason,
+        message,
+        targetAll,
+        targetIds:
+          targetAll
+            ? []
+            : targetIds,
+        until,
+        createdAt:
+          Date.now()
+      };
+
+      control.rules.push(rule);
+
+      await setK(
+        "accessControl",
+        control
+      );
+
+      return res.status(200).json({
+        ok: true,
+        rule
+      });
+    }
+
+    /* =====================================================
+       CONTRÔLE D'ACCÈS — SUPPRIMER UNE RÈGLE
+    ===================================================== */
+
+    if (a === "accessDeleteRule") {
+      requireAccessUnlock(
+        req,
+        b,
+        session
+      );
+
+      const control =
+        await getAccessControl();
+
+      const before =
+        control.rules.length;
+
+      control.rules =
+        control.rules.filter(
+          rule =>
+            rule.id !== b.id
+        );
+
+      if (
+        before ===
+        control.rules.length
+      ) {
+        throw bad(
+          "Cette règle est introuvable.",
+          404
+        );
+      }
+
+      await setK(
+        "accessControl",
+        control
+      );
+
+      return res.status(200).json({
+        ok: true
+      });
+    }
+
+    /* =====================================================
+       CONTRÔLE D'ACCÈS — COMPTE
+    ===================================================== */
+
+    if (a === "usersAccessUpdate") {
+      requireAccessUnlock(
+        req,
+        b,
+        session
+      );
+
+      const id =
+        clean(b.id, 100);
+
+      const status =
+        [
+          "active",
+          "disabled",
+          "maintenance",
+          "suspended"
+        ].includes(b.status)
+          ? b.status
+          : "";
+
+      if (
+        !id ||
+        !status
+      ) {
+        throw bad(
+          "Paramètres de restriction invalides."
+        );
+      }
+
+      if (
+        session.uid &&
+        id === session.uid
+      ) {
         throw bad(
           "Vous ne pouvez pas désactiver le compte actuellement utilisé."
         );
       }
 
-      const users = (await getK("users", [])) || [];
+      const users =
+        (await getK("users", [])) ||
+        [];
 
-      const target = users.find(
-        x => x.id === id
-      );
+      const target =
+        users.find(
+          x => x.id === id
+        );
 
       if (!target) {
-        throw bad("Compte introuvable.", 404);
+        throw bad(
+          "Compte introuvable.",
+          404
+        );
       }
 
       const until =
-        b.until == null || b.until === ""
+        b.until == null ||
+        b.until === ""
           ? null
           : Number(b.until);
 
@@ -690,80 +1641,94 @@ module.exports = async (req, res) => {
         until !== null &&
         (
           !Number.isFinite(until) ||
-          until < Date.now() - 60000
+          until <
+            Date.now() - 60000
         )
       ) {
-        throw bad("Date de fin invalide.");
+        throw bad(
+          "Date de fin invalide."
+        );
       }
 
-      const control = await getAccessControl();
+      const control =
+        await getAccessControl();
 
-      if (status === "active") {
+      if (
+        status === "active"
+      ) {
         delete control.accounts[id];
       } else {
         control.accounts[id] = {
           status,
-          message: clean(b.message, 500),
-          reason: [
-            "update",
-            "maintenance",
-            "security",
-            "verification",
-            "administrative",
-            "suspension",
-            "custom"
-          ].includes(b.reason)
-            ? b.reason
-            : "administrative",
+
+          message:
+            clean(
+              b.message,
+              500
+            ),
+
+          reason:
+            [
+              "update",
+              "maintenance",
+              "security",
+              "verification",
+              "administrative",
+              "suspension",
+              "custom"
+            ].includes(b.reason)
+              ? b.reason
+              : "administrative",
+
           until
         };
       }
 
-      await setK("accessControl", control);
+      await setK(
+        "accessControl",
+        control
+      );
 
       return res.status(200).json({
         ok: true
       });
     }
 
-    if (a === "accessDeleteRule") {
-      requireAccessUnlock(req, b, session);
-
-      const id = clean(b.id, 100);
-
-      const control = await getAccessControl();
-
-      control.rules = (control.rules || []).filter(
-        x => String(x.id) !== id
-      );
-
-      await setK("accessControl", control);
-
-      return res.status(200).json({
-        ok: true,
-        control
-      });
-    }
-
-    // =========================
-    // DEMANDES
-    // =========================
+    /* =====================================================
+       LISTE DES DEMANDES
+    ===================================================== */
 
     if (a === "listRequests") {
       return res.status(200).json({
-        requests: (await getK("requests", [])) || []
+        requests:
+          (await getK(
+            "requests",
+            []
+          )) || []
       });
     }
 
-    if (a === "getRequest") {
-      const requests = (await getK("requests", [])) || [];
+    /* =====================================================
+       CONSULTER UNE DEMANDE
+    ===================================================== */
 
-      const request = requests.find(
-        x => x.id === b.id
-      );
+    if (a === "getRequest") {
+      const requests =
+        (await getK(
+          "requests",
+          []
+        )) || [];
+
+      const request =
+        requests.find(
+          x => x.id === b.id
+        );
 
       if (!request) {
-        throw bad("Demande introuvable", 404);
+        throw bad(
+          "Demande introuvable",
+          404
+        );
       }
 
       return res.status(200).json({
@@ -771,31 +1736,55 @@ module.exports = async (req, res) => {
       });
     }
 
+    /* =====================================================
+       ACCEPTER / REFUSER UNE DEMANDE
+    ===================================================== */
+
     if (a === "decideRequest") {
       if (
-        !["accepted", "rejected"].includes(b.status)
+        ![
+          "accepted",
+          "rejected"
+        ].includes(b.status)
       ) {
-        throw bad("Décision invalide");
+        throw bad(
+          "Décision invalide"
+        );
       }
 
-      const requests = (await getK("requests", [])) || [];
+      const requests =
+        (await getK(
+          "requests",
+          []
+        )) || [];
 
-      const request = requests.find(
-        x => x.id === b.id
-      );
+      const request =
+        requests.find(
+          x => x.id === b.id
+        );
 
       if (!request) {
-        throw bad("Demande introuvable", 404);
+        throw bad(
+          "Demande introuvable",
+          404
+        );
       }
 
-      if (request.status !== "pending") {
+      if (
+        request.status !==
+        "pending"
+      ) {
         throw bad(
           "Cette demande a déjà été traitée",
           409
         );
       }
 
-      const reason = clean(b.reason, 500);
+      const reason =
+        clean(
+          b.reason,
+          500
+        );
 
       if (
         b.status === "rejected" &&
@@ -806,14 +1795,20 @@ module.exports = async (req, res) => {
         );
       }
 
-      if (b.status === "accepted") {
+      if (
+        b.status === "accepted"
+      ) {
         const stock =
-          (await getK("stock", [])) || [];
+          (await getK(
+            "stock",
+            []
+          )) || [];
 
         if (
           !stock.some(
             c =>
-              c.name === request.color &&
+              c.name ===
+                request.color &&
               c.inStock
           )
         ) {
@@ -824,80 +1819,47 @@ module.exports = async (req, res) => {
         }
       }
 
-      request.status = b.status;
+      request.status =
+        b.status;
+
       request.reason =
         b.status === "rejected"
           ? reason
           : "";
 
-      request.decidedAt = Date.now();
-      request.decidedBy =
-        session.user || "gerant";
+      request.decidedAt =
+        Date.now();
 
-      await setK("requests", requests);
+      request.decidedBy =
+        session.user ||
+        "gerant";
+
+      await setK(
+        "requests",
+        requests
+      );
 
       return res.status(200).json({
         ok: true,
         request
       });
     }
+
+    /* =====================================================
+       DEMANDE TERMINÉE
+    ===================================================== */
 
     if (a === "completeRequest") {
       const requests =
-        (await getK("requests", [])) || [];
+        (await getK(
+          "requests",
+          []
+        )) || [];
 
-      const request = requests.find(
-        x => x.id === b.id
-      );
-
-      if (!request) {
-        throw bad(
-          "Demande introuvable",
-          404
+      const request =
+        requests.find(
+          x => x.id === b.id
         );
-      }
-
-      if (request.status !== "accepted") {
-        throw bad(
-          "Cette demande n'est pas acceptée",
-          409
-        );
-      }
-
-      request.status = "completed";
-      request.ticketPrepared = true;
-      request.ticketId = clean(
-        b.ticketId,
-        100
-      );
-      request.completedAt = Date.now();
-
-      await setK("requests", requests);
-
-      return res.status(200).json({
-        ok: true,
-        request
-      });
-    }
-
-    if (a === "deleteRequest") {
-      const reason = clean(
-        b.reason,
-        500
-      );
-
-      if (!reason) {
-        throw bad(
-          "Indiquez pourquoi vous supprimez cette demande."
-        );
-      }
-
-      const requests =
-        (await getK("requests", [])) || [];
-
-      const request = requests.find(
-        x => x.id === b.id
-      );
 
       if (!request) {
         throw bad(
@@ -907,7 +1869,81 @@ module.exports = async (req, res) => {
       }
 
       if (
-        ["completed", "deleted"].includes(
+        request.status !==
+        "accepted"
+      ) {
+        throw bad(
+          "Cette demande n'est pas acceptée",
+          409
+        );
+      }
+
+      request.status =
+        "completed";
+
+      request.ticketPrepared =
+        true;
+
+      request.ticketId =
+        clean(
+          b.ticketId,
+          100
+        );
+
+      request.completedAt =
+        Date.now();
+
+      await setK(
+        "requests",
+        requests
+      );
+
+      return res.status(200).json({
+        ok: true,
+        request
+      });
+    }
+
+    /* =====================================================
+       SUPPRIMER UNE DEMANDE
+    ===================================================== */
+
+    if (a === "deleteRequest") {
+      const reason =
+        clean(
+          b.reason,
+          500
+        );
+
+      if (!reason) {
+        throw bad(
+          "Indiquez pourquoi vous supprimez cette demande."
+        );
+      }
+
+      const requests =
+        (await getK(
+          "requests",
+          []
+        )) || [];
+
+      const request =
+        requests.find(
+          x => x.id === b.id
+        );
+
+      if (!request) {
+        throw bad(
+          "Demande introuvable",
+          404
+        );
+      }
+
+      if (
+        [
+          "completed",
+          "deleted"
+        ].includes(
           request.status
         )
       ) {
@@ -917,13 +1953,23 @@ module.exports = async (req, res) => {
         );
       }
 
-      request.status = "deleted";
-      request.reason = reason;
-      request.deletedAt = Date.now();
-      request.deletedBy =
-        session.user || "gerant";
+      request.status =
+        "deleted";
 
-      await setK("requests", requests);
+      request.reason =
+        reason;
+
+      request.deletedAt =
+        Date.now();
+
+      request.deletedBy =
+        session.user ||
+        "gerant";
+
+      await setK(
+        "requests",
+        requests
+      );
 
       return res.status(200).json({
         ok: true,
@@ -931,41 +1977,49 @@ module.exports = async (req, res) => {
       });
     }
 
-    // =========================
-    // VÉRIFICATION DU MOT DE PASSE
-    // =========================
+    /* =====================================================
+       VÉRIFICATION DU MOT DE PASSE
+    ===================================================== */
 
     if (a === "verify") {
       return res.status(200).json({
-        ok: await passOk(
-          String(b.pass || "")
-        )
+        ok:
+          await passOk(
+            String(
+              b.pass || ""
+            )
+          )
       });
     }
 
-    // =========================
-    // CHARGEMENT DES DONNÉES
-    // =========================
+    /* =====================================================
+       CHARGEMENT DES DONNÉES ADMIN
+    ===================================================== */
 
     if (a === "all") {
       const out = {};
 
-      for (const k of ADMIN_KEYS) {
-        const value = await getK(
-          k,
-          [
-            "clients",
-            "tickets",
-            "reviews",
-            "messages",
-            "requests"
-          ].includes(k)
-            ? []
-            : null
-        );
+      for (
+        const k of ADMIN_KEYS
+      ) {
+        const value =
+          await getK(
+            k,
+            [
+              "clients",
+              "tickets",
+              "reviews",
+              "messages",
+              "requests"
+            ].includes(k)
+              ? []
+              : null
+          );
 
-        // Ne pas écraser les tarifs locaux
-        // s'il n'y a rien dans le cloud.
+        /*
+         * Ne pas écraser les tarifs locaux
+         * lorsqu'il n'y a rien dans le cloud.
+         */
         if (
           k === "tariffs" &&
           value == null
@@ -976,16 +2030,24 @@ module.exports = async (req, res) => {
         out[k] = value;
       }
 
-      return res.status(200).json(out);
+      return res.status(200).json(
+        out
+      );
     }
 
-    // =========================
-    // ENREGISTREMENT DES DONNÉES
-    // =========================
+    /* =====================================================
+       ENREGISTREMENT DES DONNÉES
+    ===================================================== */
 
     if (a === "set") {
-      if (!ADMIN_KEYS.includes(b.key)) {
-        throw bad("Clé inconnue");
+      if (
+        !ADMIN_KEYS.includes(
+          b.key
+        )
+      ) {
+        throw bad(
+          "Clé inconnue"
+        );
       }
 
       await setK(
@@ -998,71 +2060,88 @@ module.exports = async (req, res) => {
       });
     }
 
-    // =========================
-    // CHANGEMENT DU MOT DE PASSE
-    // =========================
+    /* =====================================================
+       CHANGEMENT DU MOT DE PASSE
+    ===================================================== */
 
     if (a === "changePass") {
-      const p = String(
-        b.pass || ""
-      );
+      const p =
+        String(
+          b.pass || ""
+        );
 
-      if (!/^\d{6,}$/.test(p)) {
+      if (
+        !/^\d{6,}$/.test(p)
+      ) {
         throw bad(
           "Chiffres uniquement, 6 minimum."
         );
       }
 
-      const salt = uid();
+      const salt =
+        uid();
 
-      await setK("pass", {
-        salt,
-        hash: sha(salt + p)
-      });
+      await setK(
+        "pass",
+        {
+          salt,
+          hash:
+            sha(
+              salt + p
+            )
+        }
+      );
 
       return res.status(200).json({
         ok: true
       });
     }
 
-    // =========================
-    // LISTE DES COMPTES
-    // =========================
+    /* =====================================================
+       LISTE DES COMPTES
+    ===================================================== */
 
     if (a === "usersList") {
       const users =
-        (await getK("users", [])) || [];
+        (await getK(
+          "users",
+          []
+        )) || [];
 
       const control =
         await getAccessControl();
 
       let changed = false;
 
-      const visibleUsers = users
-        .filter(
-          u =>
-            String(u.user || "")
-              .toLowerCase() !== MASTER_USER
-        )
-        .map(
+      const visibleUsers =
+        users.map(
           ({
             id,
             user,
             role
           }) => {
             let access =
-              control.accounts[id] || {
-                status: "active"
+              control.accounts[id] ||
+              {
+                status:
+                  "active"
               };
 
             if (
               access.until &&
-              Number(access.until) <= Date.now()
+              Number(
+                access.until
+              ) <= Date.now()
             ) {
-              delete control.accounts[id];
+              delete control.accounts[
+                id
+              ];
+
               access = {
-                status: "active"
+                status:
+                  "active"
               };
+
               changed = true;
             }
 
@@ -1070,15 +2149,19 @@ module.exports = async (req, res) => {
               id,
               user,
               role,
+
               accessStatus:
                 access.status ||
                 "active",
+
               accessMessage:
                 access.message ||
                 "",
+
               accessReason:
                 access.reason ||
                 "administrative",
+
               accessUntil:
                 access.until ||
                 null
@@ -1094,30 +2177,33 @@ module.exports = async (req, res) => {
       }
 
       return res.status(200).json({
-        users: visibleUsers
+        users:
+          visibleUsers
       });
     }
 
-    // =========================
-    // CRÉATION D'UN COMPTE
-    // =========================
+    /* =====================================================
+       CRÉER UN COMPTE
+    ===================================================== */
 
     if (a === "usersCreate") {
-      const user = clean(
-        b.user,
-        40
-      ).toLowerCase();
+      const user =
+        clean(
+          b.user,
+          40
+        ).toLowerCase();
 
-      const pass = String(
-        b.pass || ""
-      );
+      const pass =
+        String(
+          b.pass || ""
+        );
 
-      const role = b.role;
+      const role =
+        b.role;
 
       if (
-        !/^[a-z0-9._-]{3,40}$/.test(
-          user
-        )
+        !/^[a-z0-9._-]{3,40}$/
+          .test(user)
       ) {
         throw bad(
           "Identifiant invalide : 3 à 40 caractères, lettres/chiffres/._- uniquement."
@@ -1125,7 +2211,9 @@ module.exports = async (req, res) => {
       }
 
       if (
-        !/^\d{6,}$/.test(pass)
+        !/^\d{6,}$/.test(
+          pass
+        )
       ) {
         throw bad(
           "Le mot de passe doit contenir au moins 6 chiffres."
@@ -1133,18 +2221,24 @@ module.exports = async (req, res) => {
       }
 
       if (
-        !["admin", "assistant"].includes(
-          role
-        )
+        ![
+          "admin",
+          "assistant"
+        ].includes(role)
       ) {
         throw bad(
           "Type de compte invalide."
         );
       }
 
+      /*
+       * Le compte principal est réservé.
+       * Son identifiant actuel est leroy.
+       */
       if (
-        user === MASTER_USER ||
-        sha("nb-id:" + user) === AUTH.u
+        sha(
+          "nb-id:" + user
+        ) === AUTH.u
       ) {
         throw bad(
           "Cet identifiant est réservé au compte principal."
@@ -1152,11 +2246,15 @@ module.exports = async (req, res) => {
       }
 
       const users =
-        (await getK("users", [])) || [];
+        (await getK(
+          "users",
+          []
+        )) || [];
 
       if (
         users.some(
-          x => x.user === user
+          x =>
+            x.user === user
         )
       ) {
         throw bad(
@@ -1164,16 +2262,18 @@ module.exports = async (req, res) => {
         );
       }
 
-      const salt = uid();
+      const salt =
+        uid();
 
       users.push({
         id: uid(),
         user,
         role,
         salt,
-        hash: sha(
-          salt + pass
-        )
+        hash:
+          sha(
+            salt + pass
+          )
       });
 
       await setK(
@@ -1186,17 +2286,21 @@ module.exports = async (req, res) => {
       });
     }
 
-    // =========================
-    // SUPPRESSION D'UN COMPTE
-    // =========================
+    /* =====================================================
+       SUPPRIMER UN COMPTE
+    ===================================================== */
 
     if (a === "usersDelete") {
       const users =
-        (await getK("users", [])) || [];
+        (await getK(
+          "users",
+          []
+        )) || [];
 
       const target =
         users.find(
-          x => x.id === b.id
+          x =>
+            x.id === b.id
         );
 
       if (!target) {
@@ -1207,7 +2311,8 @@ module.exports = async (req, res) => {
       }
 
       if (
-        target.id === session.uid
+        target.id ===
+        session.uid
       ) {
         throw bad(
           "Vous ne pouvez pas supprimer le compte actuellement utilisé."
@@ -1217,7 +2322,8 @@ module.exports = async (req, res) => {
       await setK(
         "users",
         users.filter(
-          x => x.id !== b.id
+          x =>
+            x.id !== b.id
         )
       );
 
@@ -1226,19 +2332,21 @@ module.exports = async (req, res) => {
       });
     }
 
-    // =========================
-    // SUPPRESSION D'UN AVIS
-    // =========================
+    /* =====================================================
+       SUPPRIMER UN AVIS
+    ===================================================== */
 
     if (a === "delReview") {
       const l =
-        ((await getK(
-          "reviews",
-          []
-        )) || [])
-          .filter(
-            r => r.id !== b.id
-          );
+        (
+          (await getK(
+            "reviews",
+            []
+          )) || []
+        ).filter(
+          r =>
+            r.id !== b.id
+        );
 
       await setK(
         "reviews",
@@ -1250,9 +2358,9 @@ module.exports = async (req, res) => {
       });
     }
 
-    // =========================
-    // GESTION DES MESSAGES
-    // =========================
+    /* =====================================================
+       GESTION DES MESSAGES
+    ===================================================== */
 
     if (
       [
@@ -1267,14 +2375,19 @@ module.exports = async (req, res) => {
           []
         )) || [];
 
-      if (a === "delMessage") {
-        l = l.filter(
-          m => m.id !== b.id
-        );
+      if (
+        a === "delMessage"
+      ) {
+        l =
+          l.filter(
+            m =>
+              m.id !== b.id
+          );
       } else {
         const m =
           l.find(
-            x => x.id === b.id
+            x =>
+              x.id === b.id
           );
 
         if (!m) {
@@ -1284,20 +2397,29 @@ module.exports = async (req, res) => {
           );
         }
 
-        if (a === "markRead") {
-          m.read = !!b.read;
+        if (
+          a === "markRead"
+        ) {
+          m.read =
+            !!b.read;
         }
 
-        if (a === "reply") {
+        if (
+          a === "reply"
+        ) {
           m.reply = {
-            text: clean(
-              b.text,
-              1500
-            ),
-            date: Date.now()
+            text:
+              clean(
+                b.text,
+                1500
+              ),
+
+            date:
+              Date.now()
           };
 
-          m.read = true;
+          m.read =
+            true;
         }
       }
 
@@ -1311,7 +2433,13 @@ module.exports = async (req, res) => {
       });
     }
 
-    throw bad("Action inconnue");
+    /* =====================================================
+       ACTION INCONNUE
+    ===================================================== */
+
+    throw bad(
+      "Action inconnue"
+    );
 
   } catch (e) {
     return res.status(
@@ -1319,13 +2447,22 @@ module.exports = async (req, res) => {
     ).json(
       e.status
         ? {
-            error: e.message
+            error:
+              e.message
           }
         : {
-            error: "Erreur serveur",
-            detail: String(
-              e && e.message || e
-            ).slice(0, 200)
+            error:
+              "Erreur serveur",
+
+            detail:
+              String(
+                e &&
+                e.message ||
+                e
+              ).slice(
+                0,
+                200
+              )
           }
     );
   }
