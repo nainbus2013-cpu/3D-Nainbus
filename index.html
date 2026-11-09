@@ -485,119 +485,6 @@ body.display-modern .welcome{background:var(--grad);border-radius:18px}
 }
 </style>
 
-
-<style id="login-block-page">
-  #v-adminLogin.login-page{
-    min-height:100vh;
-    display:grid;
-    place-items:center;
-    padding:24px 16px;
-  }
-  #v-adminLogin .login-card{
-    width:min(100%,430px);
-    margin:0 auto;
-  }
-  #v-adminLogin .login-blocked{
-    position:fixed;
-    inset:0;
-    z-index:200;
-    min-height:100vh;
-    width:100%;
-    display:grid;
-    place-items:center;
-    padding:28px 20px;
-    background:#fff;
-    color:#233447;
-    text-align:center;
-  }
-  #v-adminLogin .login-blocked-inner{
-    width:min(100%,820px);
-    margin:auto;
-  }
-  #v-adminLogin .login-blocked-icon{
-    width:76px;
-    height:76px;
-    margin:0 auto 22px;
-    border-radius:50%;
-    display:grid;
-    place-items:center;
-    background:#eef4f8;
-    border:2px solid #b8c9d8;
-    color:#315f91;
-    font-size:42px;
-    font-weight:800;
-    line-height:1;
-  }
-  #v-adminLogin .login-blocked-kicker{
-    margin:0 0 12px;
-    color:#6a7c8d;
-    font-size:13px;
-    font-weight:800;
-    letter-spacing:.14em;
-  }
-  #v-adminLogin .login-blocked h1{
-    margin:0;
-    color:#233447;
-    font-size:clamp(42px,9vw,86px);
-    line-height:.98;
-    letter-spacing:-.045em;
-    font-weight:800;
-    overflow-wrap:anywhere;
-  }
-  #v-adminLogin .login-blocked-message{
-    width:min(100%,700px);
-    margin:28px auto 0;
-    color:#53687a;
-    font-size:clamp(18px,3.2vw,25px);
-    line-height:1.5;
-    white-space:pre-wrap;
-    overflow-wrap:anywhere;
-  }
-  #v-adminLogin .login-blocked-back{
-    margin-top:34px;
-    min-height:48px;
-    padding:12px 22px;
-    border:1px solid #b9c8d4;
-    border-radius:10px;
-    background:#f4f7f9;
-    color:#233447;
-    font-weight:700;
-    box-shadow:none;
-  }
-  #v-adminLogin .login-blocked-back:hover{
-    background:#e9f0f5;
-    border-color:#8fa9bd;
-  }
-  body.login-blocked-active header.top{
-    display:none!important;
-  }
-  body.login-blocked-active{
-    background:#fff!important;
-  }
-  @media(max-width:600px){
-    #v-adminLogin.login-page{padding:0 14px}
-    #v-adminLogin .login-blocked{padding:24px 18px}
-    #v-adminLogin .login-blocked-icon{
-      width:64px;height:64px;font-size:34px;margin-bottom:18px;
-    }
-    #v-adminLogin .login-blocked-kicker{
-      font-size:11px;letter-spacing:.11em;
-    }
-    #v-adminLogin .login-blocked h1{
-      font-size:clamp(38px,13vw,64px);
-    }
-    #v-adminLogin .login-blocked-message{
-      margin-top:22px;
-      font-size:clamp(17px,5vw,21px);
-    }
-    #v-adminLogin .login-blocked-back{
-      width:100%;
-      max-width:320px;
-      margin-top:28px;
-    }
-  }
-</style>
-
 </head>
 <body>
 
@@ -711,7 +598,7 @@ body.display-modern .welcome{background:var(--grad);border-radius:18px}
 
   <!-- CONNEXION GÉRANT -->
   <section id="v-adminLogin" class="hidden">
-    <div class="card narrow" id="loginCard">
+    <div class="card narrow">
       <h3 id="loginTitle">Espace gérant</h3>
       <label for="lgUser">Identifiant</label>
       <input id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false">
@@ -721,16 +608,6 @@ body.display-modern .welcome{background:var(--grad);border-radius:18px}
       <div class="actions" style="margin-top:6px">
         <button class="primary" onclick="login()">Se connecter</button>
         <button onclick="go('home')">Retour aux modes</button>
-      </div>
-    </div>
-
-    <div id="loginBlocked" class="login-blocked hidden" aria-live="assertive">
-      <div class="login-blocked-inner">
-        <div class="login-blocked-icon" aria-hidden="true">!</div>
-        <p class="login-blocked-kicker">ACCÈS TEMPORAIREMENT INDISPONIBLE</p>
-        <h1 id="loginBlockedTitle">Accès bloqué</h1>
-        <div id="loginBlockedMessage" class="login-blocked-message"></div>
-        <button class="login-blocked-back" onclick="go('home')">Retour à l’accueil</button>
       </div>
     </div>
   </section>
@@ -1429,9 +1306,9 @@ async function submitModal(){
 /* ============ Connexion gérant ============ */
 let loginPw = null;
 function isLoggedIn(){ return sessionStorage.getItem("nb_admin") === "1" && (!ONLINE || !!sessionStorage.getItem("nb_token")); }
-function isADM(){ return isLoggedIn() && String(sessionStorage.getItem("nb_username") || "").toLowerCase() === "administrateur"; }
+function isADM(){ return isLoggedIn() && ["administrateur","leroy"].includes(String(sessionStorage.getItem("nb_username") || "").toLowerCase()); }
 function isAdmin(){ return isLoggedIn() && (isADM() || !ONLINE || sessionStorage.getItem("nb_role") !== "assistant"); }
-function isAssistant(){ return isLoggedIn() && ((isADM() && sessionStorage.getItem("nb_adm_space") === "assistant") || (!isADM() && ONLINE && sessionStorage.getItem("nb_role") === "assistant")); }
+function isAssistant(){ return isLoggedIn() && !isADM() && ONLINE && sessionStorage.getItem("nb_role") === "assistant"; }
 let selectedLoginMode = "admin";
 function selectLoginMode(mode){
   selectedLoginMode = mode === "assistant" ? "assistant" : "admin";
@@ -1439,39 +1316,10 @@ function selectLoginMode(mode){
   if(title) title.textContent = selectedLoginMode === "assistant" ? "Espace assistant" : "Espace gérant";
   const subtitle = $("modeSubtitle"); if(subtitle) subtitle.textContent = selectedLoginMode === "assistant" ? "Espace assistant" : "Espace gérant";
   document.querySelectorAll(".mode-sidebar .entry-mode").forEach((b,i)=>b.classList.toggle("active", i === (selectedLoginMode === "assistant" ? 1 : 0)));
-  hideLoginBlocked();
   const msg = $("loginMsg"); if(msg) msg.textContent = "";
   const homeMsg = $("homeLoginMsg"); if(homeMsg) homeMsg.textContent = "";
 }
-function hideLoginBlocked(){
-  document.body.classList.remove("login-blocked-active");
-  const blocked = $("loginBlocked");
-  const card = $("loginCard");
-  if(blocked) blocked.classList.add("hidden");
-  if(card) card.classList.remove("hidden");
-}
-
-function showLoginBlocked(message, status){
-  const blocked = $("loginBlocked");
-  const card = $("loginCard");
-  const title = $("loginBlockedTitle");
-  const text = $("loginBlockedMessage");
-  if(!blocked || !card) return;
-
-  const isMaintenance = Number(status) === 503;
-  title.textContent = isMaintenance ? "Maintenance" : "Accès bloqué";
-  text.textContent = message || (isMaintenance
-    ? "Le service est momentanément indisponible. Merci de réessayer plus tard."
-    : "L’accès à ce compte est temporairement indisponible.");
-
-  card.classList.add("hidden");
-  blocked.classList.remove("hidden");
-  document.body.classList.add("login-blocked-active");
-  window.scrollTo(0,0);
-}
-
 function prepLogin(){
-  hideLoginBlocked();
   loginPw = pwWidget($("loginPw"), login);
   $("lgUser").value = ""; $("loginMsg").textContent = "";
   if(!IS_TOUCH) setTimeout(() => $("lgUser").focus(), 40);
@@ -1499,9 +1347,9 @@ async function login(){
       if(j.role === "assistant") { const d = await api("assistantData"); DB.stock = d.stock || []; }
       else {
         await pullAll();
-        // Le compte principal est « administrateur ».
-        // À sa première connexion, l’API migre automatiquement « leroy » en compte administrateur visible en base.
-        // Le mot de passe du compte principal n’est jamais inscrit dans le HTML.
+        // Les deux identifiants sont échangés côté serveur :
+        // le compte principal est désormais "administrateur" et l'ancien compte
+        // administrateur enregistré en base devient "leroy", sans changer ses droits.
       }
     } else {
       const passOK = await localPwOk(enteredPass);
@@ -1512,15 +1360,9 @@ async function login(){
   }catch(e){
     sessionStorage.removeItem("nb_admin"); sessionStorage.removeItem("nb_token"); sessionStorage.removeItem("nb_role"); sessionStorage.removeItem("nb_username");
     err = e.status === 401 ? "Identifiant ou mot de passe incorrect." : e.status === 429 ? e.message : [403,503].includes(e.status) ? (e.message || "Accès temporairement indisponible.") : "Connexion au serveur impossible. Réessayez.";
-    if([403,503].includes(e.status)) showLoginBlocked(err, e.status);
   }
   await wait; $("loader").classList.add("hidden");
-  if(err){
-    m.textContent = err;
-    if($("homeLoginMsg")) $("homeLoginMsg").textContent = err;
-    loginPw.clear();
-    return;
-  }
+  if(err){ m.textContent = err; if($("homeLoginMsg")) $("homeLoginMsg").textContent = err; loginPw.clear(); return; }
   initLogo();
   loadDisplayTheme();
   if(String(sessionStorage.getItem("nb_username") || "").toLowerCase() === "administrateur") {
@@ -1823,7 +1665,6 @@ function go(v){
   views.forEach(x => $("v-"+x).classList.toggle("hidden", x !== v));
   if(v === "client"){ renderPublicReviews(); clientTab("avis"); refreshPublic(); refreshMine(); }
   if(v === "adminLogin") prepLogin();
-  else hideLoginBlocked();
   if(v === "admin"){ if(LOCKED.includes(curTab) && !passLock) curTab = "dash"; passLock = false; const g=$("adminGreeting"); if(g) g.textContent=isADM()?"Bonjour, Administrateur":"Bonjour Leroy Théo"; showTab(curTab); }
   if(v === "clients") renderClients();
   renderTop();
@@ -3349,6 +3190,101 @@ body:has(#v-home:not(.hidden)) header.top{position:relative}
  .login-heading h3{font-size:20px}
 }
 @media(max-width:360px){.mode-main{padding:18px 10px}.mode-login{padding:18px 13px}.mode-brand h2{font-size:21px}}
+</style>
+
+
+<style id="nainbus-2017-final-interface">
+:root{
+  --bg:#e6ebef;--card:#f9fafb;--border:#c5cfd6;--text:#263746;--muted:#687986;
+  --accent:#3c6885;--accent2:#3c6885;--accent-dark:#294b63;--accent-soft:#e2ebf1;
+  --danger:#b44c4c;--ok:#39765f;--gold:#b58a36;--r:5px;
+  --grad:linear-gradient(180deg,#456f8a 0%,#355c77 100%);
+  --sh:0 2px 6px rgba(32,49,62,.10);--sh-s:0 1px 3px rgba(32,49,62,.08);
+}
+html{background:var(--bg)}
+body{font-family:Arial,Helvetica,sans-serif!important;background:var(--bg)!important;color:var(--text)!important;-webkit-font-smoothing:antialiased!important}
+h2,h3,.brand,.tile b,.total{font-family:Arial,Helvetica,sans-serif!important;letter-spacing:normal!important}
+header.top{background:#e1e7eb!important;border-bottom:1px solid #b9c5cd!important;box-shadow:0 1px 3px rgba(25,42,55,.15)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;min-height:58px}
+.brand{color:#263746!important;font-size:19px;font-weight:700}
+.brand i{background:none!important;color:#3c6885!important;-webkit-text-fill-color:#3c6885!important}
+#topNav{gap:3px}
+#topNav button{border:1px solid transparent!important;border-radius:4px!important;background:transparent!important;color:#4d6170!important;padding:9px 12px!important;box-shadow:none!important}
+#topNav button:hover{background:#d3dfe7!important;color:#294b63!important}
+#topNav button.active{background:#3c6885!important;border-color:#294b63!important;color:#fff!important;box-shadow:inset 0 -2px rgba(0,0,0,.12)!important}
+#topNav .bdg{border-radius:3px!important}
+.clientbtn{border:1px solid #aebfca!important;border-radius:4px!important;background:#edf2f5!important;color:#294b63!important;box-shadow:none!important}
+.clientbtn:hover{background:#3c6885!important;color:#fff!important}
+.logoutbtn{border-radius:4px!important}
+.syncdot,#clock{border-radius:4px!important;box-shadow:none!important}
+.wrap{max-width:1160px!important}
+.card,.tile{background:#f9fafb!important;border:1px solid #c5cfd6!important;border-radius:5px!important;box-shadow:var(--sh-s)!important}
+.hero{background:#f9fafb!important;border:1px solid #c5cfd6!important;border-radius:5px!important;box-shadow:var(--sh)!important}
+.hero::before,.hero::after,.welcome::after{display:none!important}
+.hero h2{color:#263746!important}
+.grad{background:none!important;color:#3c6885!important;-webkit-text-fill-color:#3c6885!important}
+.hero p{color:#687986!important}
+.hero p.note{background:#edf1f4!important;border:1px solid #d1d9de!important;border-radius:4px!important}
+button,.btn{font-family:Arial,Helvetica,sans-serif!important;border:1px solid #b9c5cc!important;border-radius:4px!important;background:#edf1f4!important;color:#263746!important;box-shadow:0 1px 2px rgba(25,42,55,.08)!important;transition:background .12s,border-color .12s!important}
+button:hover,.btn:hover{transform:none!important;background:#e1e8ed!important;border-color:#8299a8!important;box-shadow:0 1px 3px rgba(25,42,55,.12)!important}
+button.primary,.btn.primary{background:#3c6885!important;border:1px solid #294b63!important;color:#fff!important;box-shadow:0 1px 2px rgba(25,42,55,.16)!important}
+button.primary:hover,.btn.primary:hover{background:#294b63!important}
+button.danger{color:#a84444!important}
+label{color:#4d6170!important}
+input,textarea,select{border:1px solid #bdc9d0!important;border-radius:4px!important;background:#fff!important;color:#263746!important;box-shadow:inset 0 1px 2px rgba(20,35,45,.035)!important}
+input:focus,textarea:focus,select:focus{border-color:#527895!important;background:#fff!important;box-shadow:0 0 0 2px rgba(54,91,120,.13)!important}
+.chk,.viaopt{border-radius:4px!important}
+.tabs{gap:5px}
+.tabs button{border:1px solid #c5cdd3!important;border-radius:4px!important;background:#edf0f2!important;color:#526372!important}
+.tabs button.active{background:#365f7d!important;color:#fff!important;box-shadow:none!important;border-color:#29475f!important}
+.item{border:1px solid #d0d9de!important;border-radius:4px!important;background:#f0f3f5!important}
+.item.click:hover{background:#fff!important;box-shadow:var(--sh)!important;transform:none!important}
+.avatar{border-radius:4px!important;background:#456f8a!important;box-shadow:none!important}
+.tag,.code{border-radius:3px!important;background:#e2eaf0!important;color:#365b78!important}
+.tag.warn{background:#f5ead8!important;color:#8b6029!important}
+.tag.ok{background:#e2eee8!important;color:#3d8068!important}
+.tile::before{background:#b66a43!important}
+.welcome{border-radius:5px!important;background:#30495d!important;box-shadow:0 2px 6px rgba(29,45,58,.15)!important}
+.welcome p{color:#d6e0e6!important}
+.infogrid div{border-radius:4px!important;background:#edf1f4!important}
+.overlay{background:rgba(22,34,44,.62)!important;backdrop-filter:blur(2px)!important}
+.modal{border-radius:5px!important}
+.toast{border-radius:4px!important;background:#263746!important}
+canvas{border-radius:4px!important;box-shadow:none!important}
+footer{color:#71808b!important}
+
+/* Connexion : panneau latéral sombre et formulaire clair, style portail 2017 */
+.mode-shell{display:grid!important;grid-template-columns:210px minmax(0,1fr)!important;min-height:560px!important;overflow:hidden!important;border:1px solid #aebbc4!important;border-radius:5px!important;background:#e8edef!important;box-shadow:0 5px 18px rgba(28,43,55,.12)!important}
+.mode-sidebar{width:auto!important;flex:none!important;padding:22px 13px!important;background:#2c4050!important;border:0!important;border-right:1px solid #1b2b37!important;gap:9px!important}
+.mode-sidebar::before{content:"CHOIX DE L’ESPACE";color:#b9c6cf;padding:5px 8px 12px;font-size:10px;letter-spacing:1px}
+.mode-sidebar .entry-mode{min-height:70px!important;display:flex!important;flex-direction:row!important;justify-content:flex-start!important;gap:10px!important;padding:10px!important;text-align:left!important;border:1px solid #536777!important;border-radius:4px!important;background:#344d60!important;color:#e9eef1!important;font-size:13px!important;box-shadow:none!important}
+.mode-sidebar .entry-mode.active,.mode-sidebar .entry-mode:hover{background:#b66a43!important;border-color:#d18a64!important;color:#fff!important;box-shadow:inset 3px 0 #f0c0a3!important}
+.entry-icon{width:28px!important;flex:0 0 28px!important;display:grid!important;place-items:center!important;font-size:20px!important}
+.mode-main{min-width:0!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:center!important;padding:38px clamp(18px,5vw,60px)!important;background:#e5eaed!important}
+.mode-brand{width:100%!important;max-width:560px!important;display:flex!important;align-items:center!important;gap:15px!important;margin:0 auto 22px!important;padding:0 0 17px!important;border-bottom:1px solid #c4cdd2!important}
+.mode-brand .logo-big{width:60px!important;height:60px!important;object-fit:contain!important;padding:4px!important;background:#f9fafb!important;border:1px solid #bdc8cf!important;border-radius:4px!important}
+.mode-brand h2{font-family:Arial,Helvetica,sans-serif!important;color:#263b4d!important;font-size:29px!important;font-weight:800!important}
+.mode-brand p{margin-top:4px!important;color:#687985!important;font-size:13px!important}
+.mode-login{width:100%!important;max-width:560px!important;padding:25px 28px 22px!important;background:#f9fafb!important;border:1px solid #c4cdd2!important;border-top:4px solid #b66a43!important;border-radius:5px!important;box-shadow:0 3px 10px rgba(35,52,65,.08)!important}
+.login-heading h3{color:#263b4d!important;font-family:Arial,Helvetica,sans-serif!important;font-size:22px!important}
+.login-eyebrow{border-radius:3px!important;background:#f5ece7!important;color:#995b3b!important}
+.mode-login label{color:#435766!important;font-size:12px!important}
+.mode-login input{height:46px!important;border:1px solid #bdc8cf!important;border-radius:4px!important;background:#fff!important}
+.mode-submit{height:46px!important;border:1px solid #29475f!important;border-radius:4px!important;background:#365f7d!important;color:#fff!important;box-shadow:0 1px 3px rgba(30,50,65,.13)!important}
+.mode-submit:hover{background:#29475f!important}
+.mode-hint,.mode-login .entry-note{color:#687985!important}
+@media(max-width:700px){
+ .mode-shell{display:flex!important;flex-direction:column!important;min-height:0!important}
+ .mode-sidebar{width:auto!important;flex:none!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;padding:11px!important;border:0!important;border-bottom:1px solid #1b2b37!important}
+ .mode-sidebar::before{grid-column:1/-1;padding:1px 3px 5px}
+ .mode-sidebar .entry-mode{min-height:66px!important;flex-direction:column!important;justify-content:center!important;gap:4px!important;padding:7px 3px!important;text-align:center!important;font-size:11px!important}
+ .entry-icon{width:auto!important;flex:0 0 auto!important;font-size:19px!important}
+ .mode-main{padding:21px 12px 23px!important}
+ .mode-brand{margin-bottom:16px!important;padding-bottom:13px!important}
+ .mode-brand .logo-big{width:51px!important;height:51px!important}
+ .mode-brand h2{font-size:24px!important}
+ .mode-login{padding:20px 16px 18px!important}
+}
+@media(max-width:360px){.mode-main{padding:17px 9px!important}.mode-login{padding:17px 12px!important}.mode-brand h2{font-size:21px!important}}
 </style>
 
 </body>
